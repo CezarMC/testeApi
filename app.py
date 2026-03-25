@@ -72,8 +72,100 @@ def resposta_local(pergunta: str, historico: list[dict[str, str]]) -> str:
 
 st.set_page_config(page_title="IA Marketing - Simples", page_icon="IM", layout="wide")
 
-st.title("IA de Marketing")
-st.caption("Versao simples: so voce e a IA, sem custo de API externa.")
+st.markdown(
+        """
+        <style>
+            :root {
+                --bg-top: #f6efe7;
+                --bg-bottom: #efe5d8;
+                --panel: rgba(255, 252, 248, 0.92);
+                --panel-strong: rgba(255, 251, 246, 0.98);
+                --text-main: #3b2a1f;
+                --text-soft: #6a5648;
+                --accent: #b56a3d;
+                --line: rgba(80, 50, 32, 0.14);
+            }
+
+            .stApp {
+                background:
+                    radial-gradient(circle at top right, rgba(181, 106, 61, 0.12), transparent 26%),
+                    radial-gradient(circle at bottom left, rgba(118, 73, 45, 0.08), transparent 24%),
+                    linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+            }
+
+            [data-testid="stSidebar"] {
+                background: linear-gradient(180deg, #f0e4d4 0%, #e8d8c4 100%);
+                border-right: 1px solid var(--line);
+            }
+
+            [data-testid="stSidebar"] * {
+                color: var(--text-main);
+            }
+
+            .hero {
+                padding: 18px 20px;
+                border-radius: 18px;
+                background: linear-gradient(135deg, #fffaf4 0%, #f7eadc 100%);
+                border: 1px solid var(--line);
+                box-shadow: 0 12px 30px rgba(70, 42, 25, 0.08);
+                margin-bottom: 14px;
+            }
+
+            .hero h1 {
+                margin: 0 0 4px 0;
+                color: var(--text-main);
+                font-family: Georgia, serif;
+                font-size: 34px;
+            }
+
+            .hero p {
+                margin: 0;
+                color: var(--text-soft);
+                font-size: 14px;
+            }
+
+            [data-testid="stChatMessage"] {
+                background: var(--panel);
+                border: 1px solid var(--line);
+                border-radius: 14px;
+                box-shadow: 0 8px 22px rgba(64, 36, 20, 0.06);
+            }
+
+            [data-testid="stChatMessage"] * {
+                color: var(--text-main);
+            }
+
+            [data-testid="stChatInput"] {
+                background: var(--panel-strong);
+                border: 1px solid var(--line);
+                border-radius: 12px;
+            }
+
+            .stCaption {
+                color: var(--text-soft);
+            }
+
+            .stButton > button {
+                background: linear-gradient(135deg, #b56a3d 0%, #9c5a31 100%);
+                color: #fff8f2;
+                border: none;
+                border-radius: 999px;
+                padding: 0.5rem 1rem;
+            }
+        </style>
+        """,
+        unsafe_allow_html=True,
+)
+
+st.markdown(
+        """
+        <div class="hero">
+            <h1>IA de Marketing</h1>
+            <p>Conversa simples, direta e sem custo de API externa.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+)
 
 with st.sidebar:
     st.subheader("Controle")
