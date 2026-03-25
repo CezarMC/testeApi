@@ -583,6 +583,9 @@ with aba_chat:
                     resposta = gerar_resposta_marketing(pergunta, perfil, df_filtrado, historico)
                     resposta_source = "heuristic_fallback"
                     st.warning("LLM externo indisponivel no momento. Resposta gerada pelo motor local.")
+                    if llm_error:
+                        motivo_curto = llm_error[:240]
+                        st.caption(f"Motivo tecnico: {motivo_curto}")
                     st.write(resposta)
             else:
                 resposta = gerar_resposta_marketing(pergunta, perfil, df_filtrado, historico)
