@@ -6,6 +6,7 @@ import streamlit.components.v1 as components
 
 def render_voice_widget(
     start_muted: bool = False,
+    start_microphone_paused: bool = True,
     latest_response: str = "",
     latest_language: str = "pt-BR",
 ) -> None:
@@ -31,7 +32,7 @@ def render_voice_widget(
               <span id=\"voice-volume-value\" style=\"min-width:38px;font-family:Arial,sans-serif;font-size:12px;color:#5c4d40;\">85%</span>
             </div>
             <div style=\"display:flex;align-items:center;gap:8px;\">
-              <label for=\"mic-sensitivity\" style=\"min-width:128px;font-family:Arial,sans-serif;font-size:12px;color:#5c4d40;\">Sensibilidade mic</label>
+              <label for=\"mic-sensitivity\" style=\"min-width:128px;font-family:Arial,sans-serif;font-size:12px;color:#5c4d40;\">Sensibilidade de captura</label>
               <input id=\"mic-sensitivity\" type=\"range\" min=\"0\" max=\"100\" value=\"55\" oninput=\"updateMicSensitivity(this.value)\" style=\"flex:1;\"/>
               <span id=\"mic-sensitivity-value\" style=\"min-width:38px;font-family:Arial,sans-serif;font-size:12px;color:#5c4d40;\">55%</span>
             </div>
@@ -42,10 +43,21 @@ def render_voice_widget(
           let recognition;
           let listening = false;
           let voiceMuted = {str(start_muted).lower()};
+          const startMicrophonePaused = {str(start_microphone_paused).lower()};
           let voiceVolume = 0.85;
           let micSensitivity = 0.55;
+          let pendingFinalText = '';
+          let sendTimer = null;
           const latestResponse = `{safe_latest_response}`;
           const latestLanguage = `{safe_language}`;
+
+          function getParentDocument() {{
+            try {{
+              return window.parent.document;
+            }} catch (e) {{
+              return null;
+            }}
+          }}
 
           if (!window.parent.__marketingVoiceState) {{
             window.parent.__marketingVoiceState = {{
@@ -138,37 +150,122 @@ def render_voice_widget(
           }}
 
           function findChatTextarea() {{
-            const areas = window.parent.document.querySelectorAll('textarea');
-            return areas.length ? areas[areas.length - 1] : null;
+            const doc = getParentDocument();
+            if (!doc) return null;
+
+            const preferred = doc.querySelector('textarea[data-testid="stChatInputTextArea"]');
+            if (preferred) return preferred;
+
+            const areas = doc.querySelectorAll('textarea');
+            if (areas.length) return areas[areas.length - 1];
+
+            const contentEditable = doc.querySelector('[contenteditable="true"]');
+            return contentEditable || null;
           }}
 
-          function findSendButton() {{
-            const buttons = Array.from(window.parent.document.querySelectorAll('button'));
-            return buttons.find((button) => {{
+          function findSendButton(targetArea) {{
+            const doc = getParentDocument();
+            if (!doc) return null;
+
+            if (targetArea) {{
+              const nearButtons = targetArea.parentElement ? Array.from(targetArea.parentElement.querySelectorAll('button')) : [];
+              const labeledNear = nearButtons.find((button) => {{
+                const label = (button.getAttribute('aria-label') || button.innerText || button.title || '').toLowerCase();
+                return label.includes('send') || label.includes('enviar') || label.includes('submit');
+              }});
+              if (labeledNear) return labeledNear;
+              if (nearButtons.length) return nearButtons[nearButtons.length - 1];
+            }}
+
+            const allButtons = Array.from(doc.querySelectorAll('button'));
+            const labeledGlobal = allButtons.find((button) => {{
               const label = (button.getAttribute('aria-label') || button.innerText || button.title || '').toLowerCase();
-              return label.includes('send') || label.includes('enviar');
+              return label.includes('send') || label.includes('enviar') || label.includes('submit');
             }});
-          }}
+            if (labeledGlobal) return labeledGlobal;
+
+            return null;
+          }
+
+          function setInputValue(area, texto) {{
+            if (area instanceof window.HTMLTextAreaElement) {{
+              const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set;
+              if (setter) setter.call(area, texto);
+              else area.value = texto;
+            }} else if (area instanceof window.HTMLInputElement) {{
+              const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+              if (setter) setter.call(area, texto);
+              else area.value = texto;
+            }} else if (area.getAttribute && area.getAttribute('contenteditable') === 'true') {{
+              area.textContent = texto;
+            }}
+
+            area.dispatchEvent(new InputEvent('input', {{ bubbles: true, data: texto, inputType: 'insertText' }}));
+            area.dispatchEvent(new Event('change', {{ bubbles: true }}));
+          }
+
+          function trySubmitByEnter(area) {{
+            const keyDown = new KeyboardEvent('keydown', {{ key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }});
+            const keyUp = new KeyboardEvent('keyup', {{ key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }});
+            area.dispatchEvent(keyDown);
+            area.dispatchEvent(keyUp);
+          }
+
+          function trySubmitByForm(area) {{
+            const form = area.closest ? area.closest('form') : null;
+            if (!form) return false;
+            try {{
+              if (typeof form.requestSubmit === 'function') {{
+                form.requestSubmit();
+                return true;
+              }}
+              form.dispatchEvent(new Event('submit', {{ bubbles: true, cancelable: true }}));
+              return true;
+            }} catch (e) {{
+              return false;
+            }}
+          }
 
           function injectTextAndSubmit(texto) {{
             const area = findChatTextarea();
             if (!area) {{
-              document.getElementById('status').innerText = 'Nao foi possivel encontrar o campo de chat.';
+              document.getElementById('status').innerText = 'Nao achei o campo de chat para enviar por voz.';
               return;
             }}
 
+            const cleanText = (texto || '').trim();
+            if (!cleanText) return;
             area.focus();
-            const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
-            nativeSetter.call(area, texto);
-            area.dispatchEvent(new Event('input', {{ bubbles: true }}));
+            setInputValue(area, cleanText);
 
-            const sendButton = findSendButton();
-            if (sendButton) {{
-              setTimeout(() => sendButton.click(), 120);
-              document.getElementById('status').innerText = 'Pergunta enviada por voz: ' + texto;
-            }} else {{
-              document.getElementById('status').innerText = 'Texto capturado. Envie manualmente se o botao nao aparecer.';
-            }}
+            const attemptSend = (delayMs) => {{
+              setTimeout(() => {{
+                const sendButton = findSendButton(area);
+                if (sendButton) {{
+                  sendButton.click();
+                }} else {{
+                  trySubmitByEnter(area);
+                  trySubmitByForm(area);
+                }}
+              }}, delayMs);
+            }};
+
+            attemptSend(80);
+            attemptSend(260);
+            attemptSend(520);
+            document.getElementById('status').innerText = 'Pergunta enviada por voz: ' + cleanText;
+          }}
+
+          function enqueueFinalText(texto) {{
+            const clean = (texto || '').trim();
+            if (!clean) return;
+            pendingFinalText = (pendingFinalText + ' ' + clean).trim();
+            if (sendTimer) clearTimeout(sendTimer);
+            sendTimer = setTimeout(() => {{
+              injectTextAndSubmit(pendingFinalText);
+              pendingFinalText = '';
+              sendTimer = null;
+            }}, 900);
           }}
 
           function startRecognition(fromResume = false) {{
@@ -194,7 +291,7 @@ def render_voice_widget(
                 const confianca = typeof event.results[i][0].confidence === 'number' ? event.results[i][0].confidence : 1;
                 melhorConfianca = Math.max(melhorConfianca, confianca);
                 if (event.results[i].isFinal) {{
-                  const confiancaMinima = Math.max(0.1, 0.85 - (micSensitivity * 0.75));
+                  const confiancaMinima = Math.max(0.0, 0.35 - (micSensitivity * 0.30));
                   if (confianca >= confiancaMinima) {{
                     finalTexto += trecho + ' ';
                   }}
@@ -206,9 +303,9 @@ def render_voice_widget(
                 document.getElementById('status').innerText = 'Ouvindo em tempo real: ' + parcial;
               }}
               if (finalTexto.trim()) {{
-                injectTextAndSubmit(finalTexto.trim());
+                enqueueFinalText(finalTexto.trim());
               }} else if (melhorConfianca > 0) {{
-                document.getElementById('status').innerText = 'Audio captado com baixa confianca. Aumente a sensibilidade do mic.';
+                document.getElementById('status').innerText = 'Audio captado com baixa confianca. Tente falar mais perto do microfone.';
               }}
             }};
             recognition.onerror = function() {{
@@ -260,13 +357,23 @@ def render_voice_widget(
             window.parent.__marketingVoiceState.muted = voiceMuted;
           }}
 
+          function syncMuteButton() {{
+            const button = document.getElementById('voice-mute');
+            if (!button) return;
+            button.innerText = voiceMuted ? 'Ativar voz da IA' : 'Mutar voz da IA';
+          }}
+
           window.parent.voiceMarketingMuted = voiceMuted;
           window.parent.__marketingVoiceState.muted = voiceMuted;
           document.getElementById('voice-volume').value = String(Math.round(voiceVolume * 100));
           document.getElementById('mic-sensitivity').value = String(Math.round(micSensitivity * 100));
           updateVoiceVolume(Math.round(voiceVolume * 100));
           updateMicSensitivity(Math.round(micSensitivity * 100));
+          syncMuteButton();
           updateOrb();
+          if (!startMicrophonePaused) {{
+            startRecognition();
+          }}
           speakResponse(latestResponse);
         </script>
         """,

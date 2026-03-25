@@ -490,6 +490,7 @@ with aba_chat:
     st.markdown('<div class="note">Esta IA foi ajustada para te ajudar a pensar em casos de clientes finais. Voce descreve o pedido do cliente, a situacao e a meta do dia. A IA responde com leitura do problema, indicativos do que fazer, o que evitar e proximos passos. Voz e texto compartilham a mesma conversa.</div>', unsafe_allow_html=True)
     render_voice_widget(
         start_muted=mute_ia,
+        start_microphone_paused=mute_microfone,
         latest_response=st.session_state.ultima_resposta,
         latest_language=st.session_state.ultimo_idioma,
     )
