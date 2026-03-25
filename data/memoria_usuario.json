@@ -1,0 +1,61 @@
+{
+  "nome": "",
+  "objetivo": "",
+  "historico": [
+    {
+      "role": "user",
+      "content": "Oi, tudo bem, como você está?"
+    },
+    {
+      "role": "assistant",
+      "content": "Cezar, oi, tudo bem por aqui. Me conta o caso do cliente e eu te ajudo a pensar na melhor resposta e na melhor ação."
+    },
+    {
+      "role": "user",
+      "content": "Mano, eu vou estar aqui, mas é, espera um pouquinho, eu vou mudar você aqui, tirar o pus total que eu estou."
+    },
+    {
+      "role": "assistant",
+      "content": "Cezar, Vou te responder como uma consultora de marketing, com clareza e foco em decisao. Eu posso te ajudar como estrategista de marketing digital. Contexto atual: Investimento total: R$ 11,976.81. Cliques: 12883. Conversoes: 791.32. CTR medio: 5.14%. Plataforma com maior investimento: Meta. Campanha com maior volume de conversoes: Campanha Remarketing. O que voce vem perguntando mais recentemente gira em torno de: Mano, eu vou estar aqui, mas é, espera um pouquinho, eu vou mudar você aqui, tirar o pus total que eu estou.. Voce pode escrever ou falar comigo por voz: os dois caminhos entram no mesmo historico da conversa. Se quiser uma resposta mais forte, me pergunte sobre campanhas, criativos, funil, Meta Ads, Google Ads, leads, vendas ou otimizacao. Se quiser, eu transformo isso em um plano pratico agora."
+    },
+    {
+      "role": "user",
+      "content": "Oi, tudo bem, como é que você está?"
+    },
+    {
+      "role": "assistant",
+      "content": "Cezar, oi, tudo bem por aqui. O que voce quer destravar hoje? Se tiver cliente, metrica ou decisao para pensar, eu entro com voce nisso."
+    },
+    {
+      "role": "user",
+      "content": "Vamos colocar um cliente com o nome de Raul."
+    },
+    {
+      "role": "assistant",
+      "content": "Vou organizar isso com voce de um jeito claro e pratico. Eu li esse caso assim: existe um pedido, uma expectativa por tras dele e um risco de executar no impulso. O que eu faria agora e separar o que e urgente, o que realmente move resultado e o que precisa ser alinhado antes de prometer qualquer coisa. O que eu evitaria e responder no automatico, sem checar meta, prazo, verba e impacto na operacao. Se quiser, eu posso te devolver isso em formato de resposta pronta para voce usar com o cliente. Se quiser, eu transformo isso em um proximo passo bem objetivo."
+    },
+    {
+      "role": "user",
+      "content": "E ele tem."
+    },
+    {
+      "role": "assistant",
+      "content": "Vou organizar isso com voce de um jeito claro e pratico. Estou considerando que o seu foco e organizar demandas com clareza e continuidade. O que voce vem perguntando mais recentemente gira em torno de: E ele tem.. Eu consigo conversar com voce de forma simples, entender o que voce realmente precisa e ir ajustando o raciocinio junto com voce. Nao precisa vir com tudo estruturado. Pode me falar do seu jeito que eu organizo com voce e, quando fizer sentido, eu puxo para acao, metrica ou resposta para cliente. Se quiser, eu transformo isso em um proximo passo bem objetivo."
+    },
+    {
+      "role": "user",
+      "content": "Por favor, faça."
+    },
+    {
+      "role": "assistant",
+      "content": "Vou organizar isso com voce de um jeito claro e pratico. Estou considerando que o seu foco e organizar demandas com clareza e continuidade. O que voce vem perguntando mais recentemente gira em torno de: Por favor, faça.. Eu consigo conversar com voce de forma simples, entender o que voce realmente precisa e ir ajustando o raciocinio junto com voce. Nao precisa vir com tudo estruturado. Pode me falar do seu jeito que eu organizo com voce e, quando fizer sentido, eu puxo para acao, metrica ou resposta para cliente. Se quiser, eu transformo isso em um proximo passo bem objetivo."
+    }
+  ],
+  "conversas_arquivadas": [],
+  "conversa_atual_titulo": "Oi, tudo bem, como você está?",
+  "cliente_nome": "",
+  "cliente_nicho": "",
+  "cliente_objetivo": "",
+  "cliente_pedido": "",
+  "cliente_restricoes": ""
+}

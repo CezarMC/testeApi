@@ -1,0 +1,14 @@
+texto,idioma,intencao_esperada
+"Oi, tudo bem?",pt,small_talk
+"Meu nome e Carlos",pt,small_talk
+"Como melhorar o CTR da campanha?",pt,ctr
+"Quero aumentar conversoes sem subir muito o custo",pt,conversion
+"Meta ou Google: qual plataforma esta melhor?",pt,platform
+"O que fazer agora com essa campanha?",pt,next_step
+"O cliente pediu uma resposta sobre a queda de resultados",pt,client_case
+"Preciso organizar uma conversa com calma antes de responder",pt,general_chat
+"Hello, how are you?",en,small_talk
+"How can I improve click-through rate?",en,ctr
+"I need more sales from this campaign",en,conversion
+"Hola, como estas?",es,small_talk
+"Quiero mejorar conversiones",es,conversion
