@@ -6,3 +6,5 @@
 .env
 *.log
 .streamlit/secrets.toml
+data/memoria_usuario.json
+data/monitoramento_eventos.jsonl
