@@ -24,12 +24,26 @@ def render_voice_widget(
               Um botao em formato de bolinha controla o microfone. Clique uma vez para ligar e outra para desligar.
             </div>
           </div>
+          <div style=\"display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;\">
+            <div style=\"display:flex;align-items:center;gap:8px;\">
+              <label for=\"voice-volume\" style=\"min-width:128px;font-family:Arial,sans-serif;font-size:12px;color:#5c4d40;\">Volume da voz IA</label>
+              <input id=\"voice-volume\" type=\"range\" min=\"0\" max=\"100\" value=\"85\" oninput=\"updateVoiceVolume(this.value)\" style=\"flex:1;\"/>
+              <span id=\"voice-volume-value\" style=\"min-width:38px;font-family:Arial,sans-serif;font-size:12px;color:#5c4d40;\">85%</span>
+            </div>
+            <div style=\"display:flex;align-items:center;gap:8px;\">
+              <label for=\"mic-sensitivity\" style=\"min-width:128px;font-family:Arial,sans-serif;font-size:12px;color:#5c4d40;\">Sensibilidade mic</label>
+              <input id=\"mic-sensitivity\" type=\"range\" min=\"0\" max=\"100\" value=\"55\" oninput=\"updateMicSensitivity(this.value)\" style=\"flex:1;\"/>
+              <span id=\"mic-sensitivity-value\" style=\"min-width:38px;font-family:Arial,sans-serif;font-size:12px;color:#5c4d40;\">55%</span>
+            </div>
+          </div>
           <p id=\"status\" style=\"font-family:Arial, sans-serif;font-size:13px;color:#5c4d40;margin-top:12px;\">Use Chrome ou Edge para melhor suporte a voz em portugues.</p>
         </div>
         <script>
           let recognition;
           let listening = false;
           let voiceMuted = {str(start_muted).lower()};
+          let voiceVolume = 0.85;
+          let micSensitivity = 0.55;
           const latestResponse = `{safe_latest_response}`;
           const latestLanguage = `{safe_language}`;
 
@@ -37,10 +51,32 @@ def render_voice_widget(
             window.parent.__marketingVoiceState = {{
               lastSpoken: '',
               muted: voiceMuted,
+              voiceVolume: voiceVolume,
+              micSensitivity: micSensitivity,
             }};
           }}
           if (typeof window.parent.__marketingVoiceState.muted === 'boolean') {{
             voiceMuted = window.parent.__marketingVoiceState.muted;
+          }}
+          if (typeof window.parent.__marketingVoiceState.voiceVolume === 'number') {{
+            voiceVolume = window.parent.__marketingVoiceState.voiceVolume;
+          }}
+          if (typeof window.parent.__marketingVoiceState.micSensitivity === 'number') {{
+            micSensitivity = window.parent.__marketingVoiceState.micSensitivity;
+          }}
+
+          function updateVoiceVolume(rawValue) {{
+            const sliderValue = Number(rawValue);
+            voiceVolume = Math.max(0, Math.min(1, sliderValue / 100));
+            document.getElementById('voice-volume-value').innerText = String(Math.round(voiceVolume * 100)) + '%';
+            window.parent.__marketingVoiceState.voiceVolume = voiceVolume;
+          }}
+
+          function updateMicSensitivity(rawValue) {{
+            const sliderValue = Number(rawValue);
+            micSensitivity = Math.max(0, Math.min(1, sliderValue / 100));
+            document.getElementById('mic-sensitivity-value').innerText = String(Math.round(micSensitivity * 100)) + '%';
+            window.parent.__marketingVoiceState.micSensitivity = micSensitivity;
           }}
 
           function pickVoice(languageCode) {{
@@ -70,6 +106,7 @@ def render_voice_widget(
             utter.lang = latestLanguage;
             utter.rate = 1.02;
             utter.pitch = 1.08;
+            utter.volume = voiceVolume;
             utter.onstart = function() {{
               document.getElementById('status').innerText = 'A IA esta falando com voce...';
             }};
@@ -151,10 +188,16 @@ def render_voice_widget(
             recognition.onresult = function(event) {{
               let parcial = '';
               let finalTexto = '';
+              let melhorConfianca = 0;
               for (let i = event.resultIndex; i < event.results.length; i++) {{
                 const trecho = event.results[i][0].transcript;
+                const confianca = typeof event.results[i][0].confidence === 'number' ? event.results[i][0].confidence : 1;
+                melhorConfianca = Math.max(melhorConfianca, confianca);
                 if (event.results[i].isFinal) {{
-                  finalTexto += trecho + ' ';
+                  const confiancaMinima = Math.max(0.1, 0.85 - (micSensitivity * 0.75));
+                  if (confianca >= confiancaMinima) {{
+                    finalTexto += trecho + ' ';
+                  }}
                 }} else {{
                   parcial += trecho;
                 }}
@@ -164,6 +207,8 @@ def render_voice_widget(
               }}
               if (finalTexto.trim()) {{
                 injectTextAndSubmit(finalTexto.trim());
+              }} else if (melhorConfianca > 0) {{
+                document.getElementById('status').innerText = 'Audio captado com baixa confianca. Aumente a sensibilidade do mic.';
               }}
             }};
             recognition.onerror = function() {{
@@ -217,11 +262,15 @@ def render_voice_widget(
 
           window.parent.voiceMarketingMuted = voiceMuted;
           window.parent.__marketingVoiceState.muted = voiceMuted;
+          document.getElementById('voice-volume').value = String(Math.round(voiceVolume * 100));
+          document.getElementById('mic-sensitivity').value = String(Math.round(micSensitivity * 100));
+          updateVoiceVolume(Math.round(voiceVolume * 100));
+          updateMicSensitivity(Math.round(micSensitivity * 100));
           updateOrb();
           speakResponse(latestResponse);
         </script>
         """,
-        height=170,
+        height=250,
     )
 
 
@@ -234,6 +283,8 @@ def render_tts_button(text: str, button_id: str) -> None:
           const voices = window.speechSynthesis.getVoices();
           const preferred = voices.find((voice) => voice.lang.toLowerCase().includes('pt-br') && /female|maria|luciana|francisca|brasil/i.test(voice.name)) || voices.find((voice) => voice.lang.toLowerCase().includes('pt'));
           if (preferred) utter.voice = preferred;
+          const sharedState = (window.parent && window.parent.__marketingVoiceState) ? window.parent.__marketingVoiceState : null;
+          utter.volume = sharedState && typeof sharedState.voiceVolume === 'number' ? sharedState.voiceVolume : 0.85;
           utter.lang = 'pt-BR';
           utter.rate = 1.02;
           utter.pitch = 1.08;
