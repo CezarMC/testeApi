@@ -22,7 +22,18 @@ from src.llm_engine import gerar_resposta_llm, stream_resposta_llm
 from src.monitoring import registrar_evento, resumir_eventos
 from src.metrics import consolidar_resumo, gerar_dados_demo, normalizar_dataframe_com_relatorio
 from src.runtime_config import load_runtime_config
-from src.voice_ui import render_tts_button, render_voice_widget
+try:
+    from src.voice_ui import render_tts_button, render_voice_widget
+    VOICE_UI_IMPORT_ERROR = ""
+except Exception as exc:
+    VOICE_UI_IMPORT_ERROR = str(exc)
+
+    def render_voice_widget(*args, **kwargs):
+        del args, kwargs
+        st.info("Componente de voz temporariamente indisponivel neste deploy.")
+
+    def render_tts_button(*args, **kwargs):
+        del args, kwargs
 
 
 RUNTIME_CONFIG = load_runtime_config()
@@ -300,6 +311,8 @@ with st.sidebar:
         st.caption(f"LLM externo configurado: {'sim' if RUNTIME_CONFIG.external_llm_enabled else 'nao'}")
         st.caption(f"Modelo LLM: {RUNTIME_CONFIG.llm_model}")
         st.caption(f"Chave de API configurada: {'sim' if bool(RUNTIME_CONFIG.llm_api_key.strip()) else 'nao'}")
+        if VOICE_UI_IMPORT_ERROR:
+            st.caption(f"Voz indisponivel neste deploy: {VOICE_UI_IMPORT_ERROR}")
 
     st.subheader("Memoria aprendida")
     nome_aprendido = st.session_state.memoria.get("nome", "").strip()
