@@ -6,8 +6,38 @@ from dataclasses import dataclass
 from dotenv import load_dotenv
 
 
+def _secret_value(name: str) -> str | None:
+    try:
+        import streamlit as st
+    except Exception:
+        return None
+
+    try:
+        value = st.secrets.get(name)
+    except Exception:
+        return None
+
+    if value is None:
+        return None
+    return str(value)
+
+
+def _config_value(name: str, default: str) -> str:
+    env_value = os.getenv(name)
+    if env_value is not None:
+        return env_value
+
+    secret_value = _secret_value(name)
+    if secret_value is not None:
+        return secret_value
+
+    return default
+
+
 def _bool_env(name: str, default: bool) -> bool:
     value = os.getenv(name)
+    if value is None:
+        value = _secret_value(name)
     if value is None:
         return default
     return value.strip().lower() in {"1", "true", "yes", "on", "sim"}
@@ -15,6 +45,8 @@ def _bool_env(name: str, default: bool) -> bool:
 
 def _int_env(name: str, default: int) -> int:
     value = os.getenv(name)
+    if value is None:
+        value = _secret_value(name)
     if value is None:
         return default
     try:
@@ -25,6 +57,8 @@ def _int_env(name: str, default: int) -> int:
 
 def _float_env(name: str, default: float) -> float:
     value = os.getenv(name)
+    if value is None:
+        value = _secret_value(name)
     if value is None:
         return default
     try:
@@ -60,11 +94,11 @@ class RuntimeConfig:
 def load_runtime_config() -> RuntimeConfig:
     load_dotenv()
     return RuntimeConfig(
-        app_env=os.getenv("APP_ENV", "development"),
-        app_title=os.getenv("APP_TITLE", "IA de Marketing"),
-        memory_file_path=os.getenv("MEMORY_FILE_PATH", "data/memoria_usuario.json"),
-        validation_file_path=os.getenv("VALIDATION_FILE_PATH", "data/avaliacao_intencoes.csv"),
-        monitoring_file_path=os.getenv("MONITORING_FILE_PATH", "data/monitoramento_eventos.jsonl"),
+        app_env=_config_value("APP_ENV", "development"),
+        app_title=_config_value("APP_TITLE", "IA de Marketing"),
+        memory_file_path=_config_value("MEMORY_FILE_PATH", "data/memoria_usuario.json"),
+        validation_file_path=_config_value("VALIDATION_FILE_PATH", "data/avaliacao_intencoes.csv"),
+        monitoring_file_path=_config_value("MONITORING_FILE_PATH", "data/monitoramento_eventos.jsonl"),
         enable_demo_data=_bool_env("ENABLE_DEMO_DATA", True),
         enable_local_memory=_bool_env("ENABLE_LOCAL_MEMORY", True),
         enable_monitoring=_bool_env("ENABLE_MONITORING", True),
@@ -74,9 +108,9 @@ def load_runtime_config() -> RuntimeConfig:
         google_ads_enabled=_bool_env("GOOGLE_ADS_ENABLED", False),
         external_llm_enabled=_bool_env("EXTERNAL_LLM_ENABLED", False),
         llm_streaming_enabled=_bool_env("LLM_STREAMING_ENABLED", True),
-        llm_api_base_url=os.getenv("LLM_API_BASE_URL", "https://api.openai.com/v1/chat/completions"),
-        llm_api_key=os.getenv("LLM_API_KEY", ""),
-        llm_model=os.getenv("LLM_MODEL", "gpt-4o-mini"),
+        llm_api_base_url=_config_value("LLM_API_BASE_URL", "https://api.openai.com/v1/chat/completions"),
+        llm_api_key=_config_value("LLM_API_KEY", ""),
+        llm_model=_config_value("LLM_MODEL", "gpt-4o-mini"),
         llm_timeout_seconds=_int_env("LLM_TIMEOUT_SECONDS", 45),
         llm_temperature=_float_env("LLM_TEMPERATURE", 0.3),
         llm_max_tokens=_int_env("LLM_MAX_TOKENS", 700),
