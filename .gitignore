@@ -1,10 +1,1 @@
-﻿__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-.venv/
-.env
-*.log
-.streamlit/secrets.toml
-data/memoria_usuario.json
-data/monitoramento_eventos.jsonl
+.vercel
