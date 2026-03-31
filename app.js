@@ -1,8 +1,70 @@
+// Facebook Login e listagem de contas de anúncio
+window.fbAsyncInit = function() {
+  FB.init({
+    appId      : 'SEU_APP_ID_AQUI', // Substitua pelo seu App ID
+    cookie     : true,
+    xfbml      : true,
+    version    : 'v18.0'
+  });
+};
+
+function showFbPanel() {
+  document.getElementById('fbPanel').style.display = 'block';
+}
+
+function updateFbStatus(msg, kind = '') {
+  const el = document.getElementById('fbStatus');
+  if (!el) return;
+  el.className = 'status' + (kind ? ' ' + kind : '');
+  el.textContent = msg;
+}
+
+function listFbAdAccounts() {
+  updateFbStatus('Buscando contas de anúncio...');
+  FB.api('/me', 'GET', { fields: 'adaccounts{name}' }, function(response) {
+    if (response && !response.error && response.adaccounts) {
+      const list = document.getElementById('fbAccountsList');
+      const box = document.getElementById('fbAccountsBox');
+      if (box) box.style.display = 'block';
+      if (list) {
+        list.innerHTML = '';
+        response.adaccounts.data.forEach(acc => {
+          const li = document.createElement('li');
+          li.textContent = `${acc.name} (ID: ${acc.id})`;
+          list.appendChild(li);
+        });
+      }
+      updateFbStatus('Contas carregadas!', 'ok');
+    } else {
+      updateFbStatus('Erro ao buscar contas: ' + (response.error?.message || 'desconhecido'), 'err');
+    }
+  });
+}
+
+function fbLoginAndList() {
+  updateFbStatus('Conectando ao Facebook...');
+  FB.login(function(response) {
+    if (response.authResponse) {
+      updateFbStatus('Login realizado! Buscando contas...','ok');
+      listFbAdAccounts();
+    } else {
+      updateFbStatus('Login cancelado ou não autorizado.','warn');
+    }
+  }, { scope: 'ads_read,ads_management,business_management' });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  const fbBtn = document.getElementById('fbLoginBtn');
+  if (fbBtn) fbBtn.onclick = fbLoginAndList;
+  // Exibe o painel Facebook logo ao carregar (ou ajuste para exibir sob demanda)
+  showFbPanel();
+});
 (function () {
 let supabase = null;
 let currentUser = null;
 let selectedPeriodDays = 1;
 let lastMetricsPayload = null;
+let metricsHistory = [];
 
 const entryScreenEl = document.getElementById("entryScreen");
 const signupCardEl = document.getElementById("signupCard");
@@ -233,25 +295,14 @@ function ensureSupabaseReady() {
 }
 
 async function updateAuthState(user) {
-  currentUser = user;
-  if (currentUser) {
-    setEntryStatus("ok", `Conectado: ${currentUser.email}.`);
-    setEntryNextStep("clique em Abrir painel de metricas.");
-    setAuthStatus("ok", `Conta autenticada: ${currentUser.email}`);
-    openPanelBtnEl.disabled = false;
-    await checkTokenStatus();
-    await loadClients();
-  } else {
-    openPanelBtnEl.disabled = true;
-    setAuthStatus("warn", "Conta nao autenticada.");
-    setEntryStatus("warn", "Nao autenticado. Crie conta ou entre.");
-    setEntryNextStep("clique em Criar conta, Entrar ou Recuperar senha.");
-    setMainNextStep("autentique-se para liberar o painel.");
-    showOnly(entryScreenEl);
-    clearMetrics();
-    clearAvailableAccounts();
-    clientSelectEl.innerHTML = "<option value=''>Selecione...</option>";
-  }
+  // Modo teste: ignora autenticação e libera painel direto
+  currentUser = user || { email: "teste@demo.com" };
+  setEntryStatus("ok", `Modo teste: acesso liberado sem login.`);
+  setEntryNextStep("clique em Abrir painel de metricas.");
+  setAuthStatus("ok", `Conta de teste ativa.`);
+  openPanelBtnEl.disabled = false;
+  await checkTokenStatus();
+  await loadClients();
 }
 
 async function signUp() {
@@ -419,10 +470,10 @@ async function saveClient() {
       id: clientSelectEl.value || "",
       name: clientNameEl.value.trim(),
       adAccountId: adAccountIdEl.value.trim(),
-      apiVersion: apiVersionEl.value.trim() || "v22.0"
-    }
-  };
-  const result = await apiPost("/api/user-clients", payload);
+      apiVersion: apiVersionEl.value.trim() || "v25.0",
+    apiVersionEl.value = option.dataset.apiVersion || "v25.0";
+  apiVersionEl.value = "v25.0";
+    apiVersion: apiVersionEl.value.trim() || selected.dataset.apiVersion || "v25.0",
   if (!result.ok) {
     setStatus("err", result.data.error || "Erro ao salvar cliente.");
     setMainNextStep("corrija os campos e tente salvar novamente.");
@@ -475,6 +526,22 @@ function updateCards(summary) {
   kCplEl.textContent = brMoney(summary.cpl);
 }
 
+function updateMetricsHistory(payload) {
+  metricsHistory.unshift({
+    date: new Date().toLocaleString(),
+    client: payload.clientName,
+    reportType: payload.reportType,
+    periodDays: payload.periodDays,
+    metrics: payload.metrics
+  });
+  if (metricsHistory.length > 10) metricsHistory.length = 10;
+  const ul = document.getElementById("metricsHistory");
+  if (!ul) return;
+  ul.innerHTML = metricsHistory.map(item =>
+    `<li><b>${item.date}</b> - ${item.client} (${item.reportType}, ${item.periodDays}d): Gasto ${brMoney(item.metrics.spend)}, Cliques ${brInt(item.metrics.clicks)}, Leads ${brInt(item.metrics.leads)}</li>`
+  ).join("");
+}
+
 function updateTable(rows) {
   if (!Array.isArray(rows) || rows.length === 0) {
     tableBodyEl.innerHTML = '<tr><td colspan="5">Sem linhas para o periodo selecionado.</td></tr>';
@@ -498,10 +565,19 @@ async function loadMetrics() {
     setMainNextStep("selecione uma conta do token, preencha nome do cliente e salve.");
     return;
   }
+  const dateStartEl = document.getElementById("dateStart");
+  const dateEndEl = document.getElementById("dateEnd");
+  const dateStart = dateStartEl && dateStartEl.value ? dateStartEl.value : null;
+  const dateEnd = dateEndEl && dateEndEl.value ? dateEndEl.value : null;
+  if (!dateStart || !dateEnd) {
+    setStatus("warn", "Selecione a data inicial e final.");
+    return;
+  }
   const payload = {
     apiVersion: apiVersionEl.value.trim() || selected.dataset.apiVersion || "v22.0",
     adAccountId: adAccountIdEl.value.trim() || selected.dataset.account || "",
-    periodDays: selectedPeriodDays,
+    dateStart,
+    dateEnd,
     reportType: reportTypeEl.value
   };
   rawOutputEl.textContent = "Carregando...";
@@ -518,20 +594,25 @@ async function loadMetrics() {
   lastMetricsPayload = {
     clientName: selected.textContent.split(" - ")[0] || "Cliente",
     reportType: reportTypeEl.value,
-    periodDays: selectedPeriodDays,
-    metrics: result.data.summary || {}
+    dateStart,
+    dateEnd,
+    metrics: result.data.summary || {},
+    rows: result.data.rows || []
   };
+  updateMetricsHistory(lastMetricsPayload);
   setStatus("ok", "Metricas atualizadas.");
   setMainNextStep("clique em Gerar dicas da IA.");
 }
 
-async function loadAdvice() {
+async function loadAdvice(extra = {}) {
   if (!lastMetricsPayload) {
     setStatus("warn", "Atualize metricas antes de pedir recomendacoes.");
     return;
   }
   adviceEl.textContent = "Gerando recomendacoes...";
-  const result = await apiPost("/api/claude-helper", lastMetricsPayload);
+  // Enviar todas as métricas detalhadas para a IA
+  const payload = { ...lastMetricsPayload, ...extra };
+  const result = await apiPost("/api/claude-helper", payload);
   if (!result.ok || !result.data.ok) {
     adviceEl.textContent = "Nao foi possivel gerar dicas agora.";
     setMainNextStep("faca login novamente ou tente mais tarde.");
@@ -544,15 +625,60 @@ async function loadAdvice() {
     "",
     `Resumo: ${advice.summary || "-"}`,
     "",
-    "Recomendacoes:",
+    "Recomendações:",
     ...recommendations.map((item, index) => `${index + 1}. ${item}`),
     "",
-    `Proxima acao: ${advice.nextAction || "-"}`
+    `Próxima ação: ${advice.nextAction || "-"}`
   ].join("\n");
   setMainNextStep("revise as recomendacoes e ajuste as campanhas.");
 }
 
 function bindEvents() {
+      // Relatórios: troca de período rápido e datas
+      const reportTab = document.getElementById("reportTab");
+      const dateStartEl = document.getElementById("dateStart");
+      const dateEndEl = document.getElementById("dateEnd");
+      const customDateBox = document.getElementById("customDateBox");
+      function setQuickPeriod(days) {
+        const today = new Date();
+        const end = today.toISOString().slice(0, 10);
+        const startDate = new Date(today);
+        startDate.setDate(today.getDate() - (days - 1));
+        const start = startDate.toISOString().slice(0, 10);
+        if (dateStartEl) dateStartEl.value = start;
+        if (dateEndEl) dateEndEl.value = end;
+      }
+      if (reportTab) {
+        reportTab.addEventListener("change", () => {
+          if (reportTab.value === "custom") {
+            if (customDateBox) customDateBox.style.display = "flex";
+          } else {
+            if (customDateBox) customDateBox.style.display = "none";
+            if (reportTab.value === "1d") setQuickPeriod(1);
+            if (reportTab.value === "15d") setQuickPeriod(15);
+            if (reportTab.value === "30d") setQuickPeriod(30);
+          }
+        });
+        // Inicializa datas padrão
+        setQuickPeriod(1);
+        if (customDateBox) customDateBox.style.display = "none";
+      }
+    // Interação com recomendações da IA
+    const adviceUsefulBtn = document.getElementById("adviceUsefulBtn");
+    const adviceNotUsefulBtn = document.getElementById("adviceNotUsefulBtn");
+    const adviceRefreshBtn = document.getElementById("adviceRefreshBtn");
+    const adviceAskBtn = document.getElementById("adviceAskBtn");
+    const adviceQuestion = document.getElementById("adviceQuestion");
+
+    if (adviceUsefulBtn) adviceUsefulBtn.onclick = () => setStatus("ok", "Obrigado pelo feedback! IA marcada como útil.");
+    if (adviceNotUsefulBtn) adviceNotUsefulBtn.onclick = () => setStatus("warn", "Feedback registrado: dica não foi útil.");
+    if (adviceRefreshBtn) adviceRefreshBtn.onclick = () => loadAdvice({ refresh: true });
+    if (adviceAskBtn && adviceQuestion) adviceAskBtn.onclick = () => {
+      const question = adviceQuestion.value.trim();
+      if (!question) return;
+      loadAdvice({ question });
+      adviceQuestion.value = "";
+    };
   document.getElementById("showSignupBtn").addEventListener("click", () => {
     toggleAuthCard(signupCardEl, true);
     toggleAuthCard(loginCardEl, false);

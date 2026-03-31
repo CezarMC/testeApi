@@ -1,3 +1,14 @@
+  <!-- Facebook SDK -->
+  <script async defer crossorigin="anonymous" src="https://connect.facebook.net/pt_BR/sdk.js"></script>
+  <section class="panel" id="fbPanel" style="max-width:500px; margin:24px auto 0; display:none;">
+    <h2>Conectar com Facebook</h2>
+    <button id="fbLoginBtn" class="btn btn-primary" type="button">Entrar com Facebook</button>
+    <div id="fbStatus" class="status" style="margin-top:10px;"></div>
+    <div id="fbAccountsBox" style="margin-top:18px; display:none;">
+      <h3>Contas de Anúncio</h3>
+      <ul id="fbAccountsList" style="padding-left:18px;"></ul>
+    </div>
+  </section>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -410,7 +421,7 @@
           </div>
           <div class="field">
             <label for="apiVersion">Versao API</label>
-            <input id="apiVersion" type="text" value="v22.0" placeholder="v22.0" />
+            <input id="apiVersion" type="text" value="v25.0" placeholder="v25.0" />
           </div>
         </div>
         <div class="actions">
@@ -419,23 +430,32 @@
         </div>
       </div>
 
-      <div class="row">
-        <div class="field">
-          <label for="reportType">Tipo de relatorio</label>
-          <select id="reportType">
-            <option value="basico">Basico</option>
-            <option value="completo">Completo</option>
-            <option value="detalhado">Detalhado</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Periodo</label>
-          <div class="chips" id="periodChips">
-            <button class="chip active" type="button" data-days="1">1 dia</button>
-            <button class="chip" type="button" data-days="15">15 dias</button>
-            <button class="chip" type="button" data-days="30">30 dias</button>
+      <div class="field" style="margin-bottom:18px;">
+        <div style="display:flex; gap:12px; align-items:end;">
+          <div style="flex:1;">
+            <label for="reportTab">Relatórios</label>
+            <select id="reportTab" style="width:100%;">
+              <option value="custom">Personalizado</option>
+              <option value="1d">Último dia</option>
+              <option value="15d">Últimos 15 dias</option>
+              <option value="30d">Últimos 30 dias</option>
+            </select>
+          </div>
+          <div id="customDateBox" style="flex:2; display:flex; gap:8px; align-items:center;">
+            <input id="dateStart" type="date" style="width:48%" />
+            <span style="font-size:1.2em;">a</span>
+            <input id="dateEnd" type="date" style="width:48%" />
+          </div>
+          <div style="flex:1;">
+            <label for="reportType">Tipo</label>
+            <select id="reportType" style="width:100%;">
+              <option value="basico">Básico</option>
+              <option value="completo">Completo</option>
+              <option value="detalhado">Detalhado</option>
+            </select>
           </div>
         </div>
+        <p class="hint">Escolha um período rápido ou defina as datas manualmente.</p>
       </div>
 
       <div class="actions">
@@ -479,14 +499,34 @@
         </div>
       </div>
 
+
       <div class="field">
-        <label>Assistente de metricas (Claude)</label>
-        <pre class="code" id="advice">As dicas aparecerao aqui.</pre>
+        <label>Assistente de métricas (Claude)</label>
+        <div id="adviceBox">
+          <pre class="code" id="advice">As dicas aparecerao aqui.</pre>
+          <div id="adviceActions" style="margin-top:8px; display:flex; gap:8px;">
+            <button id="adviceUsefulBtn" class="btn btn-soft" type="button">Útil</button>
+            <button id="adviceNotUsefulBtn" class="btn btn-soft" type="button">Não útil</button>
+            <button id="adviceRefreshBtn" class="btn btn-soft" type="button">Nova sugestão</button>
+          </div>
+          <div style="margin-top:10px;">
+            <label for="adviceQuestion">Pergunte algo para a IA:</label>
+            <input id="adviceQuestion" type="text" placeholder="Ex: Como melhorar o CTR?" style="width:70%;margin-right:8px;" />
+            <button id="adviceAskBtn" class="btn btn-primary" type="button">Perguntar</button>
+          </div>
+        </div>
       </div>
 
       <div class="field">
-        <label>Resposta tecnica</label>
+        <label>Resposta técnica</label>
         <pre class="code" id="rawOutput">Sem requisicao executada.</pre>
+      </div>
+
+      <div class="field">
+        <label>Histórico de métricas</label>
+        <div style="overflow:auto; max-height: 120px; border: 1px solid #d9e5ef; border-radius: 12px; background:#f8fbff;">
+          <ul id="metricsHistory" style="margin:0; padding:8px 12px; list-style:decimal inside; font-size:0.85rem;"></ul>
+        </div>
       </div>
     </section>
   </main>
