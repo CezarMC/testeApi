@@ -47,7 +47,7 @@ module.exports = async function handler(request, response) {
     const client = body.client || {};
     const name = String(client.name || "").trim().slice(0, 100);
     const adAccountId = String(client.adAccountId || "").trim().replace(/^act_/, "");
-    const apiVersion = /^v\d+\.\d+$/.test(String(client.apiVersion || "")) ? String(client.apiVersion) : "v22.0";
+    const apiVersion = /^v\d+\.\d+$/.test(String(client.apiVersion || "")) ? String(client.apiVersion) : "v25.0";
     const id = String(client.id || "").trim();
 
     if (!name || !adAccountId) {

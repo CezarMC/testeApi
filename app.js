@@ -1,12 +1,71 @@
 // Facebook Login e listagem de contas de anúncio
-window.fbAsyncInit = function() {
-  FB.init({
-    appId      : 'SEU_APP_ID_AQUI', // Substitua pelo seu App ID
-    cookie     : true,
-    xfbml      : true,
-    version    : 'v18.0'
+let fbSdkEnabled = false;
+let fbSdkPromise = null;
+
+function setFbButtonState(disabled, label = "Entrar com Facebook") {
+  const fbBtn = document.getElementById("fbLoginBtn");
+  if (!fbBtn) return;
+  fbBtn.disabled = disabled;
+  fbBtn.textContent = label;
+}
+
+function loadFacebookSdk() {
+  if (window.FB) return Promise.resolve(window.FB);
+  if (fbSdkPromise) return fbSdkPromise;
+
+  fbSdkPromise = new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[src="https://connect.facebook.net/pt_BR/sdk.js"]');
+    if (existing) {
+      existing.addEventListener("load", () => resolve(window.FB));
+      existing.addEventListener("error", () => reject(new Error("Nao foi possivel carregar o SDK do Facebook.")));
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.async = true;
+    script.defer = true;
+    script.crossOrigin = "anonymous";
+    script.src = "https://connect.facebook.net/pt_BR/sdk.js";
+    script.onload = () => resolve(window.FB);
+    script.onerror = () => reject(new Error("Nao foi possivel carregar o SDK do Facebook."));
+    document.head.appendChild(script);
   });
-};
+
+  return fbSdkPromise;
+}
+
+async function initFacebookLogin(publicConfig = {}) {
+  const appId = String(publicConfig.metaAppId || "").trim();
+  const apiVersion = /^v\d+\.\d+$/.test(String(publicConfig.metaApiVersion || ""))
+    ? String(publicConfig.metaApiVersion)
+    : "v25.0";
+
+  if (!appId) {
+    fbSdkEnabled = false;
+    setFbButtonState(true, "Facebook nao configurado");
+    updateFbStatus("Login com Facebook e opcional. Configure META_APP_ID na Vercel para habilitar.", "warn");
+    return;
+  }
+
+  setFbButtonState(true, "Conectando...");
+
+  try {
+    await loadFacebookSdk();
+    window.FB.init({
+      appId,
+      cookie: true,
+      xfbml: true,
+      version: apiVersion
+    });
+    fbSdkEnabled = true;
+    setFbButtonState(false);
+    updateFbStatus("Facebook pronto para login.", "ok");
+  } catch (error) {
+    fbSdkEnabled = false;
+    setFbButtonState(true, "Facebook indisponivel");
+    updateFbStatus(error.message || "Nao foi possivel iniciar o login com Facebook.", "warn");
+  }
+}
 
 function showFbPanel() {
   document.getElementById('fbPanel').style.display = 'block';
@@ -42,6 +101,10 @@ function listFbAdAccounts() {
 }
 
 function fbLoginAndList() {
+  if (!fbSdkEnabled || !window.FB) {
+    updateFbStatus("Login com Facebook indisponivel. Configure META_APP_ID ou use o token manualmente.", "warn");
+    return;
+  }
   updateFbStatus('Conectando ao Facebook...');
   FB.login(function(response) {
     if (response.authResponse) {
@@ -56,6 +119,7 @@ function fbLoginAndList() {
 document.addEventListener('DOMContentLoaded', function() {
   const fbBtn = document.getElementById('fbLoginBtn');
   if (fbBtn) fbBtn.onclick = fbLoginAndList;
+  setFbButtonState(true, "Facebook nao configurado");
   // Exibe o painel Facebook logo ao carregar (ou ajuste para exibir sob demanda)
   showFbPanel();
 });
@@ -163,14 +227,14 @@ function renderAvailableAccounts(accounts) {
     option.value = numericId;
     option.textContent = `${account.name} - act_${numericId}`;
     option.dataset.account = numericId;
-    option.dataset.apiVersion = apiVersionEl.value.trim() || "v22.0";
+    option.dataset.apiVersion = apiVersionEl.value.trim() || "v25.0";
     if (numericId === selected) option.selected = true;
     availableAccountSelectEl.appendChild(option);
   });
 }
 
 async function loadAvailableAccounts() {
-  const result = await apiPost("/api/user-token", { action: "accounts", apiVersion: apiVersionEl.value.trim() || "v22.0" });
+  const result = await apiPost("/api/user-token", { action: "accounts", apiVersion: apiVersionEl.value.trim() || "v25.0" });
   if (!result.ok) {
     clearAvailableAccounts();
     setStatus("warn", "Nao foi possivel listar contas do token agora.");
@@ -253,6 +317,7 @@ async function loadConfig() {
 async function initSupabase() {
   const data = await loadConfig();
   const publicConfig = data.publicConfig || {};
+  await initFacebookLogin(publicConfig);
   if (!publicConfig.supabaseUrl || !publicConfig.supabaseAnonKey) {
     setEntryStatus("err", "Supabase nao configurado na Vercel.");
     setEntryNextStep("confira SUPABASE_URL e SUPABASE_ANON_KEY no projeto.");
@@ -470,10 +535,16 @@ async function saveClient() {
       id: clientSelectEl.value || "",
       name: clientNameEl.value.trim(),
       adAccountId: adAccountIdEl.value.trim(),
-      apiVersion: apiVersionEl.value.trim() || "v25.0",
-    apiVersionEl.value = option.dataset.apiVersion || "v25.0";
-  apiVersionEl.value = "v25.0";
-    apiVersion: apiVersionEl.value.trim() || selected.dataset.apiVersion || "v25.0",
+      apiVersion: apiVersionEl.value.trim() || "v25.0"
+    }
+  };
+  if (!payload.client.name || !payload.client.adAccountId) {
+    setStatus("warn", "Preencha nome do cliente e ID da conta antes de salvar.");
+    setMainNextStep("selecione uma conta do token ou informe os dados manualmente.");
+    return;
+  }
+
+  const result = await apiPost("/api/user-clients", payload);
   if (!result.ok) {
     setStatus("err", result.data.error || "Erro ao salvar cliente.");
     setMainNextStep("corrija os campos e tente salvar novamente.");
@@ -498,7 +569,7 @@ async function removeClient() {
   renderClients(result.data.clients || []);
   clientNameEl.value = "";
   adAccountIdEl.value = "";
-  apiVersionEl.value = "v22.0";
+  apiVersionEl.value = "v25.0";
   clearMetrics();
   setStatus("", "Cliente removido.");
   setMainNextStep("cadastre outro cliente ou selecione um existente.");
@@ -574,7 +645,7 @@ async function loadMetrics() {
     return;
   }
   const payload = {
-    apiVersion: apiVersionEl.value.trim() || selected.dataset.apiVersion || "v22.0",
+    apiVersion: apiVersionEl.value.trim() || selected.dataset.apiVersion || "v25.0",
     adAccountId: adAccountIdEl.value.trim() || selected.dataset.account || "",
     dateStart,
     dateEnd,
@@ -730,7 +801,7 @@ function bindEvents() {
     if (!option || !option.value) return;
     clientNameEl.value = option.textContent.split(" - ")[0] || "";
     adAccountIdEl.value = option.dataset.account || "";
-    apiVersionEl.value = option.dataset.apiVersion || "v22.0";
+    apiVersionEl.value = option.dataset.apiVersion || "v25.0";
     clearMetrics();
     setMainNextStep("clique em Atualizar metricas para este cliente.");
   });
@@ -738,7 +809,7 @@ function bindEvents() {
     const option = availableAccountSelectEl.options[availableAccountSelectEl.selectedIndex];
     if (!option || !option.value) return;
     adAccountIdEl.value = option.dataset.account || "";
-    apiVersionEl.value = option.dataset.apiVersion || "v22.0";
+    apiVersionEl.value = option.dataset.apiVersion || "v25.0";
     if (!clientNameEl.value.trim()) {
       clientNameEl.value = (option.textContent.split(" - ")[0] || "").trim();
     }

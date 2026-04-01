@@ -24,6 +24,8 @@ Cadastre na Vercel:
 - `SUPABASE_SERVICE_ROLE_KEY` (Secret key/Service Role)
 - `ENCRYPTION_KEY`
 - `ANTHROPIC_API_KEY` (opcional)
+- `META_APP_ID` (opcional, apenas para o botao Entrar com Facebook)
+- `META_API_VERSION` (opcional, padrao `v25.0`)
 
 `ENCRYPTION_KEY` deve ter 64 caracteres hex (32 bytes). Gere com:
 
@@ -55,6 +57,10 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 4. Escolha periodo e tipo de relatorio.
 5. Atualize as metricas.
 6. Gere dicas da IA se `ANTHROPIC_API_KEY` estiver configurada.
+
+## Login com Facebook
+
+O bloco Entrar com Facebook e opcional. Sem `META_APP_ID`, o painel continua funcionando com Supabase e token manual da Meta, mas o botao de login do Facebook fica desativado para evitar erro no navegador.
 
 ## Observacoes de seguranca
 

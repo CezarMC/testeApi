@@ -65,7 +65,7 @@ module.exports = async function handler(request, response) {
   }
 
   if (action === "accounts") {
-    const apiVersion = /^v\d+\.\d+$/.test(String(body.apiVersion || "")) ? String(body.apiVersion) : "v22.0";
+    const apiVersion = /^v\d+\.\d+$/.test(String(body.apiVersion || "")) ? String(body.apiVersion) : "v25.0";
     const { data: tokenRow, error: tokenError } = await admin
       .from("user_meta_tokens")
       .select("encrypted_token")

@@ -40,7 +40,7 @@ module.exports = async function handler(request, response) {
     return json(response, 400, { error: error.message });
   }
 
-  const apiVersion = String(body.apiVersion || "v22.0").trim();
+  const apiVersion = String(body.apiVersion || "v25.0").trim();
   const reportType = String(body.reportType || "basico").trim().toLowerCase();
   const periodDays = Number(body.periodDays || 1);
   const adAccountId = String(body.adAccountId || "").trim().replace(/^act_/, "");

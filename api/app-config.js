@@ -12,11 +12,14 @@ module.exports = async function handler(request, response) {
       supabaseAnonKeyConfigured: Boolean(process.env.SUPABASE_ANON_KEY),
       supabaseServiceRoleConfigured: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
       encryptionConfigured: Boolean(process.env.ENCRYPTION_KEY && String(process.env.ENCRYPTION_KEY).trim().length === 64),
-      anthropicConfigured: Boolean(process.env.ANTHROPIC_API_KEY)
+      anthropicConfigured: Boolean(process.env.ANTHROPIC_API_KEY),
+      metaAppConfigured: Boolean(process.env.META_APP_ID)
     },
     publicConfig: {
       supabaseUrl: process.env.SUPABASE_URL || "",
-      supabaseAnonKey: process.env.SUPABASE_ANON_KEY || ""
+      supabaseAnonKey: process.env.SUPABASE_ANON_KEY || "",
+      metaAppId: process.env.META_APP_ID || "",
+      metaApiVersion: process.env.META_API_VERSION || "v25.0"
     }
   });
 };

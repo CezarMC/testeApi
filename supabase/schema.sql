@@ -12,12 +12,14 @@ create table if not exists public.user_clients (
   user_id uuid not null references auth.users(id) on delete cascade,
   name text not null check (char_length(name) between 1 and 100),
   ad_account_id text not null check (ad_account_id ~ '^[0-9]+$'),
-  api_version text not null default 'v22.0' check (api_version ~ '^v[0-9]+\.[0-9]+$'),
+  api_version text not null default 'v25.0' check (api_version ~ '^v[0-9]+\.[0-9]+$'),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 create index if not exists user_clients_user_id_idx on public.user_clients (user_id);
+
+alter table public.user_clients alter column api_version set default 'v25.0';
 
 alter table public.user_meta_tokens enable row level security;
 alter table public.user_clients enable row level security;
