@@ -20,10 +20,16 @@ Aplicacao web para gerenciar varios clientes de trafego pago com metricas da Met
 Cadastre na Vercel:
 
 - `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_ANON_KEY` (Publishable key/anon)
+- `SUPABASE_SERVICE_ROLE_KEY` (Secret key/Service Role)
 - `ENCRYPTION_KEY`
 - `ANTHROPIC_API_KEY` (opcional)
+
+`ENCRYPTION_KEY` deve ter 64 caracteres hex (32 bytes). Gere com:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
 
 ## Banco no Supabase
 
