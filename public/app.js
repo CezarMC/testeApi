@@ -584,11 +584,22 @@ function ensureSupabaseReady() {
 }
 
 async function updateAuthState(user) {
-  // Modo teste: ignora autenticação e libera painel direto
-  currentUser = user || { email: "teste@demo.com" };
-  setEntryStatus("ok", `Modo teste: acesso liberado sem login.`);
+  currentUser = user || null;
+  if (!currentUser) {
+    openPanelBtnEl.disabled = true;
+    showOnly(entryScreenEl);
+    setEntryStatus("warn", "Entre para continuar.");
+    setEntryNextStep("faca login para acessar o painel.");
+    setAuthStatus("warn", "Nenhuma conta conectada.");
+    setMainNextStep("realize login para habilitar o painel.");
+    clearAvailableAccounts();
+    clientSelectEl.innerHTML = "<option value=''>Selecione...</option>";
+    return;
+  }
+
+  setEntryStatus("ok", `Sessao ativa para ${currentUser.email || "usuario"}.`);
   setEntryNextStep("clique em Abrir painel de metricas.");
-  setAuthStatus("ok", `Conta de teste ativa.`);
+  setAuthStatus("ok", `Conta conectada: ${currentUser.email || "usuario"}.`);
   openPanelBtnEl.disabled = false;
   await checkTokenStatus();
   await loadClients();
@@ -683,7 +694,15 @@ async function updateRecoveredPassword() {
 }
 
 async function logout() {
-  await supabase.auth.signOut();
+  if (!ensureSupabaseReady()) return;
+  const { error } = await supabase.auth.signOut();
+  if (error) {
+    setStatus("err", error.message || "Nao foi possivel sair da conta agora.");
+    return;
+  }
+  showOnly(entryScreenEl);
+  setEntryStatus("ok", "Sessao encerrada com sucesso.");
+  setEntryNextStep("faca login para acessar o painel.");
 }
 
 async function checkTokenStatus() {
