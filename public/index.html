@@ -202,10 +202,10 @@
 			opacity: 0.85;
 		}
 
-		.auth-controls {
+		.greeting-row {
 			display: flex;
-			gap: 8px;
-			justify-content: flex-start;
+			align-items: center;
+			gap: 10px;
 		}
 
 		.actions { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -639,16 +639,16 @@
 
 			<div class="client-box auth-box">
 				<button id="logoutBtn" class="btn btn-soft logout-floating" type="button">Sair</button>
-				<div id="authStatus" class="greeting">Olá, <span class="name">Usuario</span></div>
+				<div class="greeting-row">
+					<div id="authStatus" class="greeting">Olá, <span class="name">Usuario</span></div>
+					<button id="editDisplayNameBtn" class="btn btn-soft hidden" type="button">Alt</button>
+				</div>
 				<div id="displayNameEditor" class="actions" style="align-items:flex-end;">
 					<div class="field" style="flex:1; min-width:220px;">
 						<label for="displayNameInput">Nome no painel</label>
 						<input id="displayNameInput" type="text" placeholder="Ex.: Eduardo" maxlength="60" />
 					</div>
 					<button id="saveDisplayNameBtn" class="btn btn-soft" type="button">Salvar nome</button>
-				</div>
-				<div class="auth-controls">
-					<button id="editDisplayNameBtn" class="btn btn-soft hidden" type="button">Alt</button>
 				</div>
 			</div>
 
