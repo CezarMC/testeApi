@@ -437,22 +437,16 @@
 			</div>
 
 			<div class="field" style="margin-bottom:18px;">
-				<div style="display:flex; gap:12px; align-items:end;">
-					<div style="flex:1;">
-						<label for="reportTab">Relatórios</label>
-						<select id="reportTab" style="width:100%;">
-							<option value="custom">Personalizado</option>
-							<option value="1d">Último dia</option>
-							<option value="15d">Últimos 15 dias</option>
-							<option value="30d">Últimos 30 dias</option>
-						</select>
+				<div style="display:flex; gap:12px; align-items:end; flex-wrap:wrap;">
+					<div style="flex:1; min-width:180px;">
+						<label for="dateStart">Data inicial</label>
+						<input id="dateStart" type="date" />
 					</div>
-					<div id="customDateBox" style="flex:2; display:flex; gap:8px; align-items:center;">
-						<input id="dateStart" type="date" style="width:48%" />
-						<span style="font-size:1.2em;">a</span>
-						<input id="dateEnd" type="date" style="width:48%" />
+					<div style="flex:1; min-width:180px;">
+						<label for="dateEnd">Data final</label>
+						<input id="dateEnd" type="date" />
 					</div>
-					<div style="flex:1;">
+					<div style="flex:1; min-width:200px;">
 						<label for="reportType">Tipo</label>
 						<select id="reportType" style="width:100%;">
 							<option value="basico">Básico</option>
@@ -461,7 +455,13 @@
 						</select>
 					</div>
 				</div>
-				<p class="hint">Escolha um período rápido ou defina as datas manualmente.</p>
+				<div class="actions" style="margin-top:8px;">
+					<button id="dateQuick7" class="btn btn-soft" type="button">Últimos 7 dias</button>
+					<button id="dateQuick15" class="btn btn-soft" type="button">Últimos 15 dias</button>
+					<button id="dateQuick30" class="btn btn-soft" type="button">Últimos 30 dias</button>
+					<button id="dateQuickMonth" class="btn btn-soft" type="button">Mês atual</button>
+				</div>
+				<p class="hint">Selecione data inicial e final (dia/mês/ano) ou use os atalhos rápidos.</p>
 			</div>
 
 			<div class="actions">

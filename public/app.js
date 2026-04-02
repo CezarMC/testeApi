@@ -941,11 +941,14 @@ async function loadAdvice(extra = {}) {
 }
 
 function bindEvents() {
-      // Relatórios: troca de período rápido e datas
-      const reportTab = document.getElementById("reportTab");
+      // Relatórios: intervalo de datas simples + atalhos
       const dateStartEl = document.getElementById("dateStart");
       const dateEndEl = document.getElementById("dateEnd");
-      const customDateBox = document.getElementById("customDateBox");
+      const dateQuick7Btn = document.getElementById("dateQuick7");
+      const dateQuick15Btn = document.getElementById("dateQuick15");
+      const dateQuick30Btn = document.getElementById("dateQuick30");
+      const dateQuickMonthBtn = document.getElementById("dateQuickMonth");
+
       function setQuickPeriod(days) {
         const today = new Date();
         const end = today.toISOString().slice(0, 10);
@@ -955,21 +958,21 @@ function bindEvents() {
         if (dateStartEl) dateStartEl.value = start;
         if (dateEndEl) dateEndEl.value = end;
       }
-      if (reportTab) {
-        reportTab.addEventListener("change", () => {
-          if (reportTab.value === "custom") {
-            if (customDateBox) customDateBox.style.display = "flex";
-          } else {
-            if (customDateBox) customDateBox.style.display = "none";
-            if (reportTab.value === "1d") setQuickPeriod(1);
-            if (reportTab.value === "15d") setQuickPeriod(15);
-            if (reportTab.value === "30d") setQuickPeriod(30);
-          }
-        });
-        // Inicializa datas padrão
-        setQuickPeriod(1);
-        if (customDateBox) customDateBox.style.display = "none";
+
+      function setCurrentMonthRange() {
+        const today = new Date();
+        const first = new Date(today.getFullYear(), today.getMonth(), 1);
+        if (dateStartEl) dateStartEl.value = first.toISOString().slice(0, 10);
+        if (dateEndEl) dateEndEl.value = today.toISOString().slice(0, 10);
       }
+
+      if (dateQuick7Btn) dateQuick7Btn.addEventListener("click", () => setQuickPeriod(7));
+      if (dateQuick15Btn) dateQuick15Btn.addEventListener("click", () => setQuickPeriod(15));
+      if (dateQuick30Btn) dateQuick30Btn.addEventListener("click", () => setQuickPeriod(30));
+      if (dateQuickMonthBtn) dateQuickMonthBtn.addEventListener("click", setCurrentMonthRange);
+
+      // Inicializa em 30 dias para melhor visão no primeiro uso
+      setQuickPeriod(30);
     // Interação com recomendações da IA
     const adviceUsefulBtn = document.getElementById("adviceUsefulBtn");
     const adviceNotUsefulBtn = document.getElementById("adviceNotUsefulBtn");
