@@ -60,11 +60,12 @@
 			display: grid;
 			gap: 16px;
 			grid-template-columns: 1.15fr 0.85fr;
+			align-items: start;
 			animation: in 420ms ease;
 		}
 
 		.left { padding: 20px; display: grid; gap: 12px; }
-		.right { padding: 20px; display: grid; gap: 12px; align-content: start; }
+		.right { padding: 20px; display: grid; gap: 12px; align-content: start; max-height: calc(100vh - 36px); overflow: auto; }
 		.hidden { display: none !important; }
 
 		h1 {
@@ -242,6 +243,7 @@
 
 		.code {
 			min-height: 120px;
+			max-height: 260px;
 			background: #0d2236;
 			color: #dbeaf9;
 			border-radius: 12px;
@@ -251,6 +253,10 @@
 			line-height: 1.5;
 			overflow: auto;
 			white-space: pre-wrap;
+		}
+
+		#rawOutput {
+			max-height: 340px;
 		}
 
 		@keyframes in {
