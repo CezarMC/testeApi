@@ -404,6 +404,12 @@ function setStatus(kind, message) {
 }
 
 function setEntryStatus(kind, message) {
+  if (!entryStatusEl) return;
+  if (!message) {
+    entryStatusEl.className = "status hidden";
+    entryStatusEl.textContent = "";
+    return;
+  }
   entryStatusEl.className = "status";
   if (kind) entryStatusEl.classList.add(kind);
   entryStatusEl.textContent = message;
@@ -415,7 +421,8 @@ function setMainNextStep(message) {
 
 function setEntryNextStep(message) {
   if (!entryNextStepEl) return;
-  entryNextStepEl.textContent = message || "";
+  entryNextStepEl.textContent = "";
+  entryNextStepEl.classList.add("hidden");
 }
 
 function setAuthStatus(kind, message) {
@@ -588,8 +595,8 @@ async function updateAuthState(user) {
   if (!currentUser) {
     openPanelBtnEl.disabled = true;
     showOnly(entryScreenEl);
-    setEntryStatus("warn", "Entre para continuar.");
-    setEntryNextStep("faca login para acessar o painel.");
+    setEntryStatus("", "");
+    setEntryNextStep("");
     setAuthStatus("warn", "Nenhuma conta conectada.");
     setMainNextStep("realize login para habilitar o painel.");
     clearAvailableAccounts();
