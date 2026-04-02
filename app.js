@@ -582,7 +582,7 @@ function clearMetrics() {
   kCtrEl.textContent = "0,00%";
   kCpcEl.textContent = brMoney(0);
   kCplEl.textContent = brMoney(0);
-  tableBodyEl.innerHTML = '<tr><td colspan="5">Sem dados ainda.</td></tr>';
+  tableBodyEl.innerHTML = '<tr><td colspan="13">Sem dados ainda.</td></tr>';
   adviceEl.textContent = "As dicas aparecerao aqui.";
   rawOutputEl.textContent = "Sem requisicao executada.";
   lastMetricsPayload = null;
@@ -615,16 +615,24 @@ function updateMetricsHistory(payload) {
 
 function updateTable(rows) {
   if (!Array.isArray(rows) || rows.length === 0) {
-    tableBodyEl.innerHTML = '<tr><td colspan="5">Sem linhas para o periodo selecionado.</td></tr>';
+    tableBodyEl.innerHTML = '<tr><td colspan="13">Sem linhas para o periodo selecionado.</td></tr>';
     return;
   }
   tableBodyEl.innerHTML = rows.map((row) => `
     <tr>
       <td>${row.campaign_name || "-"}</td>
+      <td>${row.adset_name || "-"}</td>
+      <td>${row.ad_name || "-"}</td>
+      <td>${row.item_type || "-"}</td>
+      <td>${brInt(row.reach || 0)}</td>
+      <td>${brInt(row.impressions || 0)}</td>
       <td>${brMoney(row.spend)}</td>
       <td>${brInt(row.clicks)}</td>
       <td>${Number(row.ctr || 0).toFixed(2).replace(".", ",")}%</td>
-      <td>${brInt(row.leads)}</td>
+      <td>${brMoney(row.cpc || 0)}</td>
+      <td>${brMoney(row.cpm || 0)}</td>
+      <td>${Number(row.frequency || 0).toFixed(2).replace(".", ",")}</td>
+      <td>${brInt(row.results || row.leads || 0)} (${row.result_type || "-"})</td>
     </tr>
   `).join("");
 }

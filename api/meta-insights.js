@@ -23,6 +23,36 @@ function sumAction(actions, type) {
   return found ? toNumber(found.value) : 0;
 }
 
+function getPrimaryResult(actions) {
+  if (!Array.isArray(actions) || actions.length === 0) {
+    return { type: "-", value: 0 };
+  }
+
+  const priority = [
+    "lead",
+    "offsite_conversion.fb_pixel_lead",
+    "purchase",
+    "offsite_conversion.fb_pixel_purchase",
+    "complete_registration",
+    "initiate_checkout",
+    "add_to_cart",
+    "link_click"
+  ];
+
+  for (const type of priority) {
+    const item = actions.find((entry) => entry.action_type === type);
+    if (item) {
+      return { type, value: toNumber(item.value) };
+    }
+  }
+
+  const fallback = actions.find((entry) => toNumber(entry.value) > 0) || actions[0];
+  return {
+    type: fallback && fallback.action_type ? fallback.action_type : "-",
+    value: fallback ? toNumber(fallback.value) : 0
+  };
+}
+
 module.exports = async function handler(request, response) {
   if (request.method !== "POST") {
     return json(response, 405, { error: "Use POST." });
@@ -83,9 +113,9 @@ module.exports = async function handler(request, response) {
 
   const levelByType = { basico: "campaign", completo: "adset", detalhado: "ad" };
   const fieldsByType = {
-    basico: ["campaign_name", "impressions", "reach", "clicks", "spend", "cpc", "ctr", "actions"],
-    completo: ["campaign_name", "adset_name", "impressions", "reach", "clicks", "spend", "cpc", "ctr", "cpm", "frequency", "actions"],
-    detalhado: ["campaign_name", "adset_name", "ad_name", "impressions", "reach", "clicks", "spend", "cpc", "ctr", "cpm", "frequency", "actions"]
+    basico: ["campaign_id", "campaign_name", "impressions", "reach", "clicks", "spend", "cpc", "ctr", "cpm", "frequency", "actions"],
+    completo: ["campaign_id", "campaign_name", "adset_id", "adset_name", "impressions", "reach", "clicks", "spend", "cpc", "ctr", "cpm", "frequency", "actions"],
+    detalhado: ["campaign_id", "campaign_name", "adset_id", "adset_name", "ad_id", "ad_name", "impressions", "reach", "clicks", "spend", "cpc", "ctr", "cpm", "frequency", "actions"]
   };
 
   const level = levelByType[reportType] || "campaign";
@@ -126,21 +156,32 @@ module.exports = async function handler(request, response) {
     summary.cpl = summary.leads > 0 ? summary.spend / summary.leads : 0;
 
     const topRows = rows
-      .map((row) => ({
-        campaign_name: row.campaign_name || "-",
-        adset_name: row.adset_name || "-",
-        ad_name: row.ad_name || "-",
-        spend: toNumber(row.spend),
-        clicks: toNumber(row.clicks),
-        impressions: toNumber(row.impressions),
-        ctr: toNumber(row.ctr),
-        cpc: toNumber(row.cpc),
-        cpm: toNumber(row.cpm),
-        frequency: toNumber(row.frequency),
-        leads: sumAction(row.actions, "lead")
-      }))
+      .map((row) => {
+        const primaryResult = getPrimaryResult(row.actions);
+        return {
+          campaign_id: row.campaign_id || "-",
+          campaign_name: row.campaign_name || "-",
+          adset_id: row.adset_id || "-",
+          adset_name: row.adset_name || "-",
+          ad_id: row.ad_id || "-",
+          ad_name: row.ad_name || "-",
+          level,
+          item_type: level === "campaign" ? "Campanha" : level === "adset" ? "Conjunto" : "Anuncio",
+          spend: toNumber(row.spend),
+          clicks: toNumber(row.clicks),
+          impressions: toNumber(row.impressions),
+          reach: toNumber(row.reach),
+          ctr: toNumber(row.ctr),
+          cpc: toNumber(row.cpc),
+          cpm: toNumber(row.cpm),
+          frequency: toNumber(row.frequency),
+          leads: sumAction(row.actions, "lead"),
+          result_type: primaryResult.type,
+          results: primaryResult.value
+        };
+      })
       .sort((a, b) => b.spend - a.spend)
-      .slice(0, 20);
+      .slice(0, 50);
 
     return json(response, 200, {
       ok: true,
