@@ -917,20 +917,20 @@ function updateTable(rows) {
   }
   tableBodyEl.innerHTML = rows.map((row) => `
     <tr>
-      <td>${row.campaign_name || "-"}</td>
-      <td>${row.adset_name || "-"}</td>
-      <td>${row.ad_name || "-"}</td>
-      <td>${renderMediaCell(row)}</td>
-      <td>${row.item_type || "-"}</td>
-      <td>${brInt(row.reach || 0)}</td>
-      <td>${brInt(row.impressions || 0)}</td>
-      <td>${brMoney(row.spend)}</td>
-      <td>${brInt(row.clicks)}</td>
-      <td>${Number(row.ctr || 0).toFixed(2).replace(".", ",")}%</td>
-      <td>${brMoney(row.cpc || 0)}</td>
-      <td>${brMoney(row.cpm || 0)}</td>
-      <td>${Number(row.frequency || 0).toFixed(2).replace(".", ",")}</td>
-      <td>${brInt(row.results || row.leads || 0)} (${row.result_type || "-"})</td>
+      <td data-label="Campanha">${row.campaign_name || "-"}</td>
+      <td data-label="Conjunto">${row.adset_name || "-"}</td>
+      <td data-label="Anúncio">${row.ad_name || "-"}</td>
+      <td data-label="Mídia">${renderMediaCell(row)}</td>
+      <td data-label="Tipo">${row.item_type || "-"}</td>
+      <td data-label="Público">${brInt(row.reach || 0)}</td>
+      <td data-label="Impressões">${brInt(row.impressions || 0)}</td>
+      <td data-label="Gasto">${brMoney(row.spend)}</td>
+      <td data-label="Cliques">${brInt(row.clicks || 0)}</td>
+      <td data-label="CTR">${Number(row.ctr || 0).toFixed(2).replace(".", ",")}%</td>
+      <td data-label="CPC">${brMoney(row.cpc || 0)}</td>
+      <td data-label="CPM">${brMoney(row.cpm || 0)}</td>
+      <td data-label="Frequência">${Number(row.frequency || 0).toFixed(2).replace(".", ",")}</td>
+      <td data-label="Resultado">${brInt(row.results || row.leads || 0)} (${row.result_type || "-"})</td>
     </tr>
   `).join("");
 }
