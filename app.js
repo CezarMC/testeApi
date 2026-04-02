@@ -758,8 +758,8 @@ async function updateAuthState(user) {
   await checkTokenStatus();
   await loadClients();
   showOnly(metricsAppEl);
-  openMetricsScreen();
-  setStatus("ok", "Metricas abertas automaticamente.");
+  openPanelScreen();
+  setStatus("ok", "Painel de configuracoes aberto.");
   setMainNextStep("salve o token Meta, cadastre um cliente e atualize as metricas.");
 }
 
