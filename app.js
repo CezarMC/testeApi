@@ -631,10 +631,18 @@ async function signUp() {
     return;
   }
   const redirectTo = `${window.location.origin}${window.location.pathname}`;
-  const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: redirectTo } });
+  const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: redirectTo } });
   if (error) {
     setEntryStatus("err", error.message);
     setEntryNextStep("corrija os dados e tente novamente.");
+    return;
+  }
+  if (data?.session?.user) {
+    toggleAuthCard(signupCardEl, false);
+    await updateAuthState(data.session.user);
+    showOnly(metricsAppEl);
+    setStatus("ok", "Conta criada e acesso liberado automaticamente.");
+    setMainNextStep("salve o token Meta, cadastre um cliente e atualize as metricas.");
     return;
   }
   setEntryStatus("ok", "Conta criada. Verifique seu e-mail para confirmar o cadastro.");
