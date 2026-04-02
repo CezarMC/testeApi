@@ -95,6 +95,24 @@
 			animation: in 420ms ease;
 		}
 
+		.app.panel-screen {
+			max-width: 820px;
+			grid-template-columns: 1fr;
+		}
+
+		.app.panel-screen #metricsScreen {
+			display: none;
+		}
+
+		.app.metrics-screen {
+			max-width: 920px;
+			grid-template-columns: 1fr;
+		}
+
+		.app.metrics-screen #panelConfig {
+			display: none;
+		}
+
 		.left { padding: 20px; display: grid; gap: 12px; }
 		.right { padding: 20px; display: grid; gap: 12px; align-content: start; max-height: calc(100vh - 36px); overflow: auto; }
 		.hidden { display: none !important; }
@@ -581,8 +599,8 @@
 		</div>
 	</section>
 
-	<main class="app hidden" id="metricsApp">
-		<section class="panel left">
+	<main class="app hidden panel-screen" id="metricsApp">
+		<section class="panel left" id="panelConfig">
 			<div>
 				<span class="badge">Meta Business + IA</span>
 				<h1>Painel de Metricas por Cliente</h1>
@@ -676,6 +694,7 @@
 
 			<div class="actions">
 				<button id="loadMetricsBtn" class="btn btn-primary" type="button">Atualizar metricas</button>
+				<button id="openMetricsScreenBtn" class="btn btn-soft" type="button">Tela de metricas</button>
 				<button id="clientViewBtn" class="btn btn-soft" type="button">Visão cliente</button>
 				<button id="exportPdfBtn" class="btn btn-soft" type="button">Exportar PDF executivo</button>
 				<button id="loadAdviceBtn" class="btn btn-soft" type="button">Gerar dicas da IA</button>
@@ -684,7 +703,10 @@
 			<p class="hint">Fluxo recomendado: salvar token Meta, cadastrar cliente, atualizar metricas e depois gerar dicas.</p>
 		</section>
 
-		<section class="panel right">
+		<section class="panel right" id="metricsScreen">
+			<div class="actions" style="justify-content:flex-end;">
+				<button id="backToPanelBtn" class="btn btn-soft" type="button">Voltar ao painel</button>
+			</div>
 			<div id="status" class="status">Pronto para consultar.</div>
 			<div id="mainNextStep" class="next-step">Proximo passo: autentique-se para liberar o painel.</div>
 

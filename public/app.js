@@ -193,6 +193,8 @@ const cvIndicatorsEl = document.getElementById("cvIndicators");
 const cvObjectiveEl = document.getElementById("cvObjective");
 const cvStagesEl = document.getElementById("cvStages");
 const cvTopAdsEl = document.getElementById("cvTopAds");
+const panelConfigEl = document.getElementById("panelConfig");
+const metricsScreenEl = document.getElementById("metricsScreen");
 
 function brMoney(value) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value || 0));
@@ -495,6 +497,18 @@ function setSignupMode(active) {
   if (entryCta) entryCta.classList.toggle("hidden", active);
 }
 
+function openMetricsScreen() {
+  if (!metricsAppEl) return;
+  metricsAppEl.classList.add("metrics-screen");
+  metricsAppEl.classList.remove("panel-screen");
+}
+
+function openPanelScreen() {
+  if (!metricsAppEl) return;
+  metricsAppEl.classList.add("panel-screen");
+  metricsAppEl.classList.remove("metrics-screen");
+}
+
 function getPasswordChecks(password) {
   return {
     length: password.length >= 12,
@@ -725,6 +739,7 @@ async function updateAuthState(user) {
     setSignupMode(false);
     if (openPanelBtnEl) openPanelBtnEl.disabled = true;
     showOnly(entryScreenEl);
+    openPanelScreen();
     setEntryStatus("", "");
     setEntryNextStep("");
     setAuthStatus("warn", "Nenhuma conta conectada.");
@@ -743,7 +758,8 @@ async function updateAuthState(user) {
   await checkTokenStatus();
   await loadClients();
   showOnly(metricsAppEl);
-  setStatus("ok", "Painel aberto automaticamente.");
+  openMetricsScreen();
+  setStatus("ok", "Metricas abertas automaticamente.");
   setMainNextStep("salve o token Meta, cadastre um cliente e atualize as metricas.");
 }
 
@@ -1197,6 +1213,7 @@ async function loadMetrics() {
     rows: result.data.rows || []
   };
   updateMetricsHistory(lastMetricsPayload);
+  openMetricsScreen();
   setStatus("ok", "Metricas atualizadas.");
   setMainNextStep("clique em Gerar dicas da IA.");
 }
@@ -1412,6 +1429,20 @@ function bindEvents() {
   }
   document.getElementById("doRecoverBtn").addEventListener("click", sendRecoveryEmail);
   document.getElementById("doResetBtn").addEventListener("click", updateRecoveredPassword);
+  const openMetricsScreenBtn = document.getElementById("openMetricsScreenBtn");
+  if (openMetricsScreenBtn) {
+    openMetricsScreenBtn.addEventListener("click", () => {
+      showOnly(metricsAppEl);
+      openMetricsScreen();
+    });
+  }
+  const backToPanelBtn = document.getElementById("backToPanelBtn");
+  if (backToPanelBtn) {
+    backToPanelBtn.addEventListener("click", () => {
+      showOnly(metricsAppEl);
+      openPanelScreen();
+    });
+  }
   document.getElementById("backToEntryFromResetBtn").addEventListener("click", () => {
     setSignupMode(false);
     showOnly(entryScreenEl);
