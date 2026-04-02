@@ -42,7 +42,6 @@ module.exports = async function handler(request, response) {
 
   const apiVersion = String(body.apiVersion || "v25.0").trim();
   const reportType = String(body.reportType || "basico").trim().toLowerCase();
-  const periodDays = Number(body.periodDays || 1);
   const adAccountId = String(body.adAccountId || "").trim().replace(/^act_/, "");
 
   if (!/^v\d+\.\d+$/.test(apiVersion)) {
@@ -51,9 +50,20 @@ module.exports = async function handler(request, response) {
   if (!/^\d+$/.test(adAccountId)) {
     return json(response, 400, { error: "ID da conta de anúncio inválido." });
   }
-  if (![1, 15, 30].includes(periodDays)) {
-    return json(response, 400, { error: "Período inválido. Use 1, 15 ou 30." });
+
+  let since, until;
+  if (body.dateStart && body.dateEnd) {
+    since = String(body.dateStart).slice(0, 10);
+    until = String(body.dateEnd).slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(since) || !/^\d{4}-\d{2}-\d{2}$/.test(until)) {
+      return json(response, 400, { error: "Formato de data inválido. Use YYYY-MM-DD." });
+    }
+  } else {
+    const periodDays = [1, 15, 30].includes(Number(body.periodDays)) ? Number(body.periodDays) : 1;
+    ({ since, until } = getDateRange(periodDays));
   }
+
+  const periodDays = body.periodDays || null;
 
   const admin = createAdminClient();
   const { data: tokenRow, error: tokenError } = await admin
@@ -80,7 +90,6 @@ module.exports = async function handler(request, response) {
 
   const level = levelByType[reportType] || "campaign";
   const fields = fieldsByType[reportType] || fieldsByType.basico;
-  const { since, until } = getDateRange(periodDays);
 
   const query = new URLSearchParams();
   query.set("access_token", accessToken);
