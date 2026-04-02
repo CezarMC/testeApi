@@ -147,6 +147,7 @@ const authStatusEl = document.getElementById("authStatus");
 const tokenStatusEl = document.getElementById("tokenStatus");
 
 const signupEmailEl = document.getElementById("signupEmail");
+const signupDocumentEl = document.getElementById("signupDocument");
 const signupPasswordEl = document.getElementById("signupPassword");
 const signupConfirmEl = document.getElementById("signupConfirm");
 const signupRulesEl = document.getElementById("signupRules");
@@ -546,6 +547,88 @@ function updatePolicy(inputEl, outputEl, rulesEl) {
   }
 }
 
+function normalizeDocument(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function allDigitsEqual(value) {
+  return /^(\d)\1+$/.test(value);
+}
+
+function isValidCpf(cpf) {
+  if (!/^\d{11}$/.test(cpf) || allDigitsEqual(cpf)) return false;
+  const calc = (base, factor) => {
+    let total = 0;
+    for (let i = 0; i < base.length; i += 1) total += Number(base[i]) * (factor - i);
+    const mod = (total * 10) % 11;
+    return mod === 10 ? 0 : mod;
+  };
+  const d1 = calc(cpf.slice(0, 9), 10);
+  const d2 = calc(cpf.slice(0, 10), 11);
+  return d1 === Number(cpf[9]) && d2 === Number(cpf[10]);
+}
+
+function isValidCnpj(cnpj) {
+  if (!/^\d{14}$/.test(cnpj) || allDigitsEqual(cnpj)) return false;
+  const w1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+  const w2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+  const calc = (base, weights) => {
+    const total = base.split("").reduce((acc, digit, idx) => acc + Number(digit) * weights[idx], 0);
+    const mod = total % 11;
+    return mod < 2 ? 0 : 11 - mod;
+  };
+  const d1 = calc(cnpj.slice(0, 12), w1);
+  const d2 = calc(cnpj.slice(0, 13), w2);
+  return d1 === Number(cnpj[12]) && d2 === Number(cnpj[13]);
+}
+
+function parseDocument(value) {
+  const digits = normalizeDocument(value);
+  if (digits.length === 11 && isValidCpf(digits)) return { ok: true, normalized: digits, type: "cpf" };
+  if (digits.length === 14 && isValidCnpj(digits)) return { ok: true, normalized: digits, type: "cnpj" };
+  return { ok: false, normalized: digits, type: "" };
+}
+
+async function checkDocumentAvailability(document) {
+  const res = await fetch("/api/user-identity", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "check", document })
+  });
+  let data;
+  try { data = await res.json(); } catch (_) { data = { error: "Resposta invalida." }; }
+  return { ok: res.ok, status: res.status, data };
+}
+
+async function registerUserIdentity(document) {
+  return apiPost("/api/user-identity", { action: "register", document });
+}
+
+async function registerPendingIdentity(user) {
+  if (!user || !user.email) return;
+  let pending;
+  try {
+    pending = JSON.parse(localStorage.getItem("pendingIdentity") || "null");
+  } catch (_) {
+    pending = null;
+  }
+  if (!pending || !pending.document) return;
+  const sameEmail = String(pending.email || "").toLowerCase() === String(user.email || "").toLowerCase();
+  if (!sameEmail) return;
+  const identityResult = await registerUserIdentity(pending.document);
+  if (identityResult.ok) {
+    try { localStorage.removeItem("pendingIdentity"); } catch (_) {}
+    return;
+  }
+  if (identityResult.status === 409) {
+    await supabase.auth.signOut();
+    setEntryStatus("err", "CPF/CNPJ ja esta vinculado a outra conta.");
+    showOnly(entryScreenEl);
+    return;
+  }
+  setEntryStatus("warn", identityResult.data.error || "Nao foi possivel vincular CPF/CNPJ agora.");
+}
+
 async function apiPost(url, payload) {
   if (!supabase) {
     return { ok: false, blocked: true, data: { error: "Supabase nao inicializado." } };
@@ -644,6 +727,8 @@ async function updateAuthState(user) {
   setEntryNextStep("clique em Abrir painel de metricas.");
   setAuthStatus("ok", `Conta conectada: ${currentUser.email || "usuario"}.`);
   openPanelBtnEl.disabled = false;
+  await registerPendingIdentity(currentUser);
+  if (!currentUser) return;
   await checkTokenStatus();
   await loadClients();
   showOnly(metricsAppEl);
@@ -654,11 +739,26 @@ async function updateAuthState(user) {
 async function signUp() {
   if (!ensureSupabaseReady()) return;
   const email = signupEmailEl.value.trim().toLowerCase();
+  const document = signupDocumentEl ? signupDocumentEl.value.trim() : "";
   const password = signupPasswordEl.value;
   const confirm = signupConfirmEl.value;
   const check = validateStrongPassword(password);
+  const parsedDocument = parseDocument(document);
   if (!email || !email.includes("@")) {
     setEntryStatus("warn", "Informe um e-mail valido.");
+    return;
+  }
+  if (!parsedDocument.ok) {
+    setEntryStatus("warn", "Informe um CPF ou CNPJ valido.");
+    return;
+  }
+  const docAvailability = await checkDocumentAvailability(parsedDocument.normalized);
+  if (!docAvailability.ok) {
+    setEntryStatus("err", docAvailability.data.error || "Nao foi possivel validar CPF/CNPJ.");
+    return;
+  }
+  if (!docAvailability.data.available) {
+    setEntryStatus("err", "CPF/CNPJ ja cadastrado em outra conta.");
     return;
   }
   if (!check.ok) {
@@ -678,9 +778,21 @@ async function signUp() {
   }
   if (data?.session?.user) {
     setSignupMode(false);
+    const identityResult = await registerUserIdentity(parsedDocument.normalized);
+    if (!identityResult.ok) {
+      await supabase.auth.signOut();
+      setEntryStatus("err", identityResult.data.error || "Nao foi possivel vincular CPF/CNPJ.");
+      showOnly(entryScreenEl);
+      return;
+    }
     await updateAuthState(data.session.user);
     setStatus("ok", "Conta criada e acesso liberado automaticamente.");
     return;
+  }
+  try {
+    localStorage.setItem("pendingIdentity", JSON.stringify({ email, document: parsedDocument.normalized }));
+  } catch (_) {
+    // Segue sem persistencia local.
   }
   setEntryStatus("ok", "Conta criada. Verifique seu e-mail para confirmar o cadastro.");
   setEntryNextStep("confirme o e-mail e depois clique em Entrar.");

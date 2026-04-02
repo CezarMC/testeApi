@@ -17,12 +17,22 @@ create table if not exists public.user_clients (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.user_identities (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  document_type text not null check (document_type in ('cpf', 'cnpj')),
+  document_hash text not null unique,
+  document_last4 text not null check (char_length(document_last4) = 4),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create index if not exists user_clients_user_id_idx on public.user_clients (user_id);
 
 alter table public.user_clients alter column api_version set default 'v25.0';
 
 alter table public.user_meta_tokens enable row level security;
 alter table public.user_clients enable row level security;
+alter table public.user_identities enable row level security;
 
 drop policy if exists "user_meta_tokens_select_own" on public.user_meta_tokens;
 create policy "user_meta_tokens_select_own" on public.user_meta_tokens
@@ -63,5 +73,26 @@ with check (auth.uid() = user_id);
 
 drop policy if exists "user_clients_delete_own" on public.user_clients;
 create policy "user_clients_delete_own" on public.user_clients
+for delete to authenticated
+using (auth.uid() = user_id);
+
+drop policy if exists "user_identities_select_own" on public.user_identities;
+create policy "user_identities_select_own" on public.user_identities
+for select to authenticated
+using (auth.uid() = user_id);
+
+drop policy if exists "user_identities_insert_own" on public.user_identities;
+create policy "user_identities_insert_own" on public.user_identities
+for insert to authenticated
+with check (auth.uid() = user_id);
+
+drop policy if exists "user_identities_update_own" on public.user_identities;
+create policy "user_identities_update_own" on public.user_identities
+for update to authenticated
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+drop policy if exists "user_identities_delete_own" on public.user_identities;
+create policy "user_identities_delete_own" on public.user_identities
 for delete to authenticated
 using (auth.uid() = user_id);
