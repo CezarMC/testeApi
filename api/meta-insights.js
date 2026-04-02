@@ -23,6 +23,30 @@ function sumAction(actions, type) {
   return found ? toNumber(found.value) : 0;
 }
 
+function sumActionsByTypes(actions, types) {
+  if (!Array.isArray(actions)) return 0;
+  return actions.reduce((acc, item) => {
+    if (!item || !types.includes(item.action_type)) return acc;
+    return acc + toNumber(item.value);
+  }, 0);
+}
+
+const LEAD_ACTION_TYPES = [
+  "lead",
+  "onsite_conversion.lead_grouped",
+  "offsite_conversion.fb_pixel_lead",
+  "onsite_web_lead",
+  "omni_lead",
+  "onsite_conversion.messaging_conversation_started_7d",
+  "onsite_conversion.messaging_first_reply",
+  "onsite_conversion.contact_total",
+  "submit_application"
+];
+
+function getLeadCount(actions) {
+  return sumActionsByTypes(actions, LEAD_ACTION_TYPES);
+}
+
 function getPrimaryResult(actions) {
   if (!Array.isArray(actions) || actions.length === 0) {
     return { type: "-", value: 0 };
@@ -187,7 +211,7 @@ module.exports = async function handler(request, response) {
         acc.impressions += toNumber(row.impressions);
         acc.reach += toNumber(row.reach);
         acc.clicks += toNumber(row.clicks);
-        acc.leads += sumAction(row.actions, "lead");
+        acc.leads += getLeadCount(row.actions);
         return acc;
       },
       { spend: 0, impressions: 0, reach: 0, clicks: 0, leads: 0 }
@@ -222,7 +246,7 @@ module.exports = async function handler(request, response) {
           cpc: toNumber(row.cpc),
           cpm: toNumber(row.cpm),
           frequency: toNumber(row.frequency),
-          leads: sumAction(row.actions, "lead"),
+          leads: getLeadCount(row.actions),
           result_type: primaryResult.type,
           results: primaryResult.value,
           creative_id: media.creative_id || null,
