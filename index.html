@@ -259,6 +259,45 @@
 			max-height: 340px;
 		}
 
+		.client-view {
+			max-width: 1080px;
+			margin: 0 auto;
+			padding: 20px;
+			display: grid;
+			gap: 14px;
+			animation: in 320ms ease;
+		}
+
+		.client-view-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			gap: 12px;
+			flex-wrap: wrap;
+		}
+
+		.client-view-subtitle {
+			color: var(--muted);
+			font-size: 0.9rem;
+			margin: 0;
+		}
+
+		.client-grid {
+			display: grid;
+			grid-template-columns: repeat(4, minmax(0, 1fr));
+			gap: 10px;
+		}
+
+		.client-card {
+			border: 1px solid rgba(15, 41, 64, 0.15);
+			background: #fff;
+			border-radius: 12px;
+			padding: 10px;
+		}
+
+		.client-card .k { font-size: 0.74rem; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+		.client-card .v { font-size: 1.1rem; font-weight: 700; margin-top: 6px; }
+
 		@keyframes in {
 			from { opacity: 0; transform: translateY(8px); }
 			to { opacity: 1; transform: translateY(0); }
@@ -267,6 +306,7 @@
 		@media (max-width: 1000px) {
 			.app { grid-template-columns: 1fr; }
 			.row, .row-3, .cards { grid-template-columns: 1fr; }
+			.client-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 		}
 	</style>
 </head>
@@ -466,6 +506,7 @@
 
 			<div class="actions">
 				<button id="loadMetricsBtn" class="btn btn-primary" type="button">Atualizar metricas</button>
+				<button id="clientViewBtn" class="btn btn-soft" type="button">Visão cliente</button>
 				<button id="exportPdfBtn" class="btn btn-soft" type="button">Exportar PDF executivo</button>
 				<button id="loadAdviceBtn" class="btn btn-soft" type="button">Gerar dicas da IA</button>
 			</div>
@@ -571,6 +612,39 @@
 			</div>
 		</section>
 	</main>
+
+	<section class="panel client-view hidden" id="clientViewScreen">
+		<div class="client-view-header">
+			<div>
+				<span class="badge">Visão Cliente</span>
+				<h1 id="cvTitle">Relatório Executivo</h1>
+				<p class="client-view-subtitle" id="cvSubtitle">Atualize as métricas para gerar esta visão.</p>
+			</div>
+			<div class="actions">
+				<button id="cvBackBtn" class="btn btn-soft" type="button">Voltar ao painel</button>
+				<button id="cvPrintBtn" class="btn btn-primary" type="button">Imprimir / PDF</button>
+			</div>
+		</div>
+
+		<div class="client-grid" id="cvIndicators"></div>
+
+		<div class="field">
+			<label>Objetivo estratégico</label>
+			<div class="next-step" id="cvObjective">Sem dados.</div>
+		</div>
+
+		<div class="field">
+			<label>Distribuição por etapa</label>
+			<div id="cvStages" class="next-step"></div>
+		</div>
+
+		<div class="field">
+			<label>Top anúncios por resultado</label>
+			<div style="overflow:auto; max-height: 260px; border: 1px solid #d9e5ef; border-radius: 12px; background:#f8fbff;">
+				<ol id="cvTopAds" style="margin:0; padding:10px 14px 10px 28px;"></ol>
+			</div>
+		</div>
+	</section>
 
 	<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 	<script src="/app.js"></script>

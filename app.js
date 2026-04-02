@@ -136,6 +136,7 @@ const loginCardEl = document.getElementById("loginCard");
 const recoverScreenEl = document.getElementById("recoverScreen");
 const resetScreenEl = document.getElementById("resetScreen");
 const metricsAppEl = document.getElementById("metricsApp");
+const clientViewScreenEl = document.getElementById("clientViewScreen");
 
 const entryStatusEl = document.getElementById("entryStatus");
 const entryNextStepEl = document.getElementById("entryNextStep");
@@ -182,6 +183,12 @@ const kDailySpendEl = document.getElementById("kDailySpend");
 const objectiveSummaryEl = document.getElementById("objectiveSummary");
 const stageBarsEl = document.getElementById("stageBars");
 const topAdsListEl = document.getElementById("topAdsList");
+const cvTitleEl = document.getElementById("cvTitle");
+const cvSubtitleEl = document.getElementById("cvSubtitle");
+const cvIndicatorsEl = document.getElementById("cvIndicators");
+const cvObjectiveEl = document.getElementById("cvObjective");
+const cvStagesEl = document.getElementById("cvStages");
+const cvTopAdsEl = document.getElementById("cvTopAds");
 
 function brMoney(value) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value || 0));
@@ -333,6 +340,62 @@ function updateExecutiveBlocks(rows, summary, context = {}, dateStart, dateEnd) 
     : "<li>Sem anúncios detalhados no período. Selecione o tipo Detalhado para ranking de anúncios.</li>";
 }
 
+function getClientViewIndicators() {
+  return [
+    ["Gasto total", kSpendEl.textContent],
+    ["Investimento diário", kDailySpendEl.textContent],
+    ["Público atingido", kReachEl.textContent],
+    ["Impressões", kImpressionsEl.textContent],
+    ["Cliques", kClicksEl.textContent],
+    ["Leads", kLeadsEl.textContent],
+    ["CTR", kCtrEl.textContent],
+    ["CPC", kCpcEl.textContent],
+    ["CPL", kCplEl.textContent],
+    ["Frequência", kFrequencyEl.textContent],
+    ["Resultado principal", kResultsEl.textContent],
+    ["Tipo de resultado", kResultTypeEl.textContent]
+  ];
+}
+
+function renderClientView() {
+  if (!lastMetricsPayload) {
+    return false;
+  }
+
+  const clientName = lastMetricsPayload.clientName || "Cliente";
+  const periodLabel = `${lastMetricsPayload.dateStart || "-"} até ${lastMetricsPayload.dateEnd || "-"}`;
+  cvTitleEl.textContent = `Relatório Executivo - ${clientName}`;
+  cvSubtitleEl.textContent = `Período: ${periodLabel} | Tipo: ${lastMetricsPayload.reportType || "-"}`;
+
+  cvIndicatorsEl.innerHTML = getClientViewIndicators()
+    .map(([label, value]) => `
+      <div class="client-card">
+        <div class="k">${escapeHtml(label)}</div>
+        <div class="v">${escapeHtml(value)}</div>
+      </div>
+    `)
+    .join("");
+
+  cvObjectiveEl.textContent = objectiveSummaryEl.textContent || "Sem dados.";
+  cvStagesEl.innerHTML = stageBarsEl.innerHTML || "Sem dados.";
+  cvTopAdsEl.innerHTML = topAdsListEl.innerHTML || "<li>Sem dados.</li>";
+  return true;
+}
+
+function openClientView() {
+  if (!renderClientView()) {
+    setStatus("warn", "Atualize métricas antes de abrir a visão cliente.");
+    return;
+  }
+  metricsAppEl.classList.add("hidden");
+  clientViewScreenEl.classList.remove("hidden");
+}
+
+function closeClientView() {
+  clientViewScreenEl.classList.add("hidden");
+  metricsAppEl.classList.remove("hidden");
+}
+
 function setStatus(kind, message) {
   statusEl.className = "status";
   if (kind) statusEl.classList.add(kind);
@@ -403,7 +466,7 @@ async function loadAvailableAccounts() {
 }
 
 function showOnly(screen) {
-  [entryScreenEl, recoverScreenEl, resetScreenEl, metricsAppEl].forEach((el) => el.classList.add("hidden"));
+  [entryScreenEl, recoverScreenEl, resetScreenEl, metricsAppEl, clientViewScreenEl].forEach((el) => el.classList.add("hidden"));
   screen.classList.remove("hidden");
 }
 
@@ -793,6 +856,10 @@ function clearMetrics() {
   objectiveSummaryEl.textContent = "Carregue as métricas para gerar o resumo estratégico.";
   stageBarsEl.innerHTML = "";
   topAdsListEl.innerHTML = "";
+  cvIndicatorsEl.innerHTML = "";
+  cvObjectiveEl.textContent = "Sem dados.";
+  cvStagesEl.innerHTML = "Sem dados.";
+  cvTopAdsEl.innerHTML = "";
   tableBodyEl.innerHTML = '<tr><td colspan="14">Sem dados ainda.</td></tr>';
   adviceEl.textContent = "As dicas aparecerao aqui.";
   rawOutputEl.textContent = "Sem requisicao executada.";
@@ -1137,8 +1204,11 @@ function bindEvents() {
   document.getElementById("saveClientBtn").addEventListener("click", saveClient);
   document.getElementById("removeClientBtn").addEventListener("click", removeClient);
   document.getElementById("loadMetricsBtn").addEventListener("click", loadMetrics);
+  document.getElementById("clientViewBtn").addEventListener("click", openClientView);
   document.getElementById("exportPdfBtn").addEventListener("click", exportExecutivePdf);
   document.getElementById("loadAdviceBtn").addEventListener("click", loadAdvice);
+  document.getElementById("cvBackBtn").addEventListener("click", closeClientView);
+  document.getElementById("cvPrintBtn").addEventListener("click", exportExecutivePdf);
   signupPasswordEl.addEventListener("input", () => updatePolicy(signupPasswordEl, signupPolicyEl));
   resetPasswordEl.addEventListener("input", () => updatePolicy(resetPasswordEl, resetPolicyEl));
   clientSelectEl.addEventListener("change", () => {
