@@ -733,7 +733,7 @@ function clearMetrics() {
   objectiveSummaryEl.textContent = "Carregue as métricas para gerar o resumo estratégico.";
   stageBarsEl.innerHTML = "";
   topAdsListEl.innerHTML = "";
-  tableBodyEl.innerHTML = '<tr><td colspan="13">Sem dados ainda.</td></tr>';
+  tableBodyEl.innerHTML = '<tr><td colspan="14">Sem dados ainda.</td></tr>';
   adviceEl.textContent = "As dicas aparecerao aqui.";
   rawOutputEl.textContent = "Sem requisicao executada.";
   lastMetricsPayload = null;
@@ -764,9 +764,27 @@ function updateMetricsHistory(payload) {
   ).join("");
 }
 
+function renderMediaCell(row) {
+  const imageUrl = row.thumbnail_url || row.image_url || "";
+  const videoUrl = row.video_watch_url || "";
+
+  if (!imageUrl && !videoUrl) {
+    return "<span style=\"color:#6b7f94;\">Sem mídia</span>";
+  }
+
+  const imagePart = imageUrl
+    ? `<a href="${imageUrl}" target="_blank" rel="noopener noreferrer" title="Abrir imagem"><img src="${imageUrl}" alt="Mídia do anúncio" style="width:52px;height:52px;object-fit:cover;border-radius:8px;border:1px solid #d9e5ef;" /></a>`
+    : "";
+  const videoPart = videoUrl
+    ? `<a href="${videoUrl}" target="_blank" rel="noopener noreferrer" style="font-size:0.8rem;font-weight:700;color:#0f6ea8;text-decoration:none;">Vídeo</a>`
+    : "";
+
+  return `<div style="display:flex;gap:8px;align-items:center;">${imagePart}${videoPart}</div>`;
+}
+
 function updateTable(rows) {
   if (!Array.isArray(rows) || rows.length === 0) {
-    tableBodyEl.innerHTML = '<tr><td colspan="13">Sem linhas para o periodo selecionado.</td></tr>';
+    tableBodyEl.innerHTML = '<tr><td colspan="14">Sem linhas para o periodo selecionado.</td></tr>';
     return;
   }
   tableBodyEl.innerHTML = rows.map((row) => `
@@ -774,6 +792,7 @@ function updateTable(rows) {
       <td>${row.campaign_name || "-"}</td>
       <td>${row.adset_name || "-"}</td>
       <td>${row.ad_name || "-"}</td>
+      <td>${renderMediaCell(row)}</td>
       <td>${row.item_type || "-"}</td>
       <td>${brInt(row.reach || 0)}</td>
       <td>${brInt(row.impressions || 0)}</td>

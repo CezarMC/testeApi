@@ -53,6 +53,48 @@ function getPrimaryResult(actions) {
   };
 }
 
+async function fetchAdMediaMap(apiVersion, accessToken, adIds) {
+  const uniqueAdIds = Array.from(new Set((adIds || []).filter((id) => /^\d+$/.test(String(id))))).slice(0, 50);
+  if (uniqueAdIds.length === 0) return {};
+
+  const query = new URLSearchParams();
+  query.set("access_token", accessToken);
+  query.set("ids", uniqueAdIds.join(","));
+  query.set("fields", "id,name,creative{id,name,thumbnail_url,image_url,object_story_spec}");
+
+  const url = `https://graph.facebook.com/${apiVersion}/?${query.toString()}`;
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    if (!response.ok || !data || typeof data !== "object") return {};
+
+    const mediaMap = {};
+    uniqueAdIds.forEach((adId) => {
+      const ad = data[adId];
+      if (!ad) return;
+
+      const creative = ad.creative || {};
+      const story = creative.object_story_spec || {};
+      const videoId = story.video_data?.video_id || story.template_data?.video_id || null;
+      const imageUrl = creative.image_url || story.link_data?.picture || story.photo_data?.image_url || null;
+      const thumbnailUrl = creative.thumbnail_url || imageUrl || null;
+
+      mediaMap[adId] = {
+        creative_id: creative.id || null,
+        creative_name: creative.name || null,
+        image_url: imageUrl,
+        thumbnail_url: thumbnailUrl,
+        video_id: videoId,
+        video_watch_url: videoId ? `https://www.facebook.com/watch/?v=${videoId}` : null
+      };
+    });
+
+    return mediaMap;
+  } catch (_) {
+    return {};
+  }
+}
+
 module.exports = async function handler(request, response) {
   if (request.method !== "POST") {
     return json(response, 405, { error: "Use POST." });
@@ -155,9 +197,14 @@ module.exports = async function handler(request, response) {
     summary.cpc = summary.clicks > 0 ? summary.spend / summary.clicks : 0;
     summary.cpl = summary.leads > 0 ? summary.spend / summary.leads : 0;
 
+    const adMediaMap = level === "ad"
+      ? await fetchAdMediaMap(apiVersion, accessToken, rows.map((row) => String(row.ad_id || "")))
+      : {};
+
     const topRows = rows
       .map((row) => {
         const primaryResult = getPrimaryResult(row.actions);
+        const media = adMediaMap[String(row.ad_id || "")] || {};
         return {
           campaign_id: row.campaign_id || "-",
           campaign_name: row.campaign_name || "-",
@@ -177,7 +224,13 @@ module.exports = async function handler(request, response) {
           frequency: toNumber(row.frequency),
           leads: sumAction(row.actions, "lead"),
           result_type: primaryResult.type,
-          results: primaryResult.value
+          results: primaryResult.value,
+          creative_id: media.creative_id || null,
+          creative_name: media.creative_name || null,
+          image_url: media.image_url || null,
+          thumbnail_url: media.thumbnail_url || null,
+          video_id: media.video_id || null,
+          video_watch_url: media.video_watch_url || null
         };
       })
       .sort((a, b) => b.spend - a.spend)
