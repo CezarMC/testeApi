@@ -54,6 +54,16 @@
 			animation: in 420ms ease;
 		}
 
+		.entry #entryStatus,
+		.entry #entryNextStep,
+		.entry .hint {
+			text-align: center;
+		}
+
+		.entry > .actions {
+			justify-content: center;
+		}
+
 		.app {
 			max-width: 1240px;
 			margin: 0 auto;
@@ -411,12 +421,6 @@
 		<div id="entryStatus" class="status warn">Nao autenticado. Crie conta ou entre.</div>
 		<div id="entryNextStep" class="next-step hidden"></div>
 
-		<div class="actions">
-			<button id="showSignupBtn" class="btn btn-primary" type="button">Criar conta</button>
-			<button id="openRecoverBtn" class="btn btn-soft" type="button">Recuperar senha</button>
-			<button id="openPanelBtn" class="btn btn-soft" type="button" disabled>Abrir painel de metricas</button>
-		</div>
-
 		<div id="signupCard" class="client-box hidden">
 			<label for="signupEmail">Criar conta com seguranca</label>
 			<input id="signupEmail" type="email" placeholder="seu-email@dominio.com" autocomplete="email" />
@@ -445,6 +449,12 @@
 			<div class="actions">
 				<button id="doLoginBtn" class="btn btn-primary" type="button">Entrar agora</button>
 			</div>
+		</div>
+
+		<div class="actions">
+			<button id="showSignupBtn" class="btn btn-primary" type="button">Criar conta</button>
+			<button id="openRecoverBtn" class="btn btn-soft" type="button">Recuperar senha</button>
+			<button id="openPanelBtn" class="btn btn-soft" type="button" disabled>Abrir painel de metricas</button>
 		</div>
 	</section>
 
