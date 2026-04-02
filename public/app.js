@@ -147,6 +147,8 @@ const authStatusEl = document.getElementById("authStatus");
 const tokenStatusEl = document.getElementById("tokenStatus");
 const displayNameInputEl = document.getElementById("displayNameInput");
 const saveDisplayNameBtnEl = document.getElementById("saveDisplayNameBtn");
+const displayNameEditorEl = document.getElementById("displayNameEditor");
+const editDisplayNameBtnEl = document.getElementById("editDisplayNameBtn");
 
 const signupEmailEl = document.getElementById("signupEmail");
 const signupDocumentEl = document.getElementById("signupDocument");
@@ -432,10 +434,15 @@ function setEntryNextStep(message) {
   entryNextStepEl.classList.add("hidden");
 }
 
-function setAuthStatus(kind, message) {
-  authStatusEl.className = "status";
-  if (kind) authStatusEl.classList.add(kind);
-  authStatusEl.textContent = message;
+function setAuthStatus(message) {
+  const name = String(message || "Usuario").trim() || "Usuario";
+  authStatusEl.className = "greeting";
+  authStatusEl.innerHTML = `Ola, <span class="name">${escapeHtml(name)}</span>`;
+}
+
+function setDisplayNameEditMode(editing) {
+  if (displayNameEditorEl) displayNameEditorEl.classList.toggle("hidden", !editing);
+  if (editDisplayNameBtnEl) editDisplayNameBtnEl.classList.toggle("hidden", editing);
 }
 
 function getDisplayNameStorageKey(user) {
@@ -463,6 +470,16 @@ function getPanelName(user) {
   return getDefaultPanelName(user);
 }
 
+function hasSavedPanelName(user) {
+  if (!user) return false;
+  try {
+    const saved = localStorage.getItem(getDisplayNameStorageKey(user));
+    return Boolean(saved && saved.trim());
+  } catch (_) {
+    return false;
+  }
+}
+
 function savePanelName() {
   if (!currentUser || !displayNameInputEl) return;
   const value = String(displayNameInputEl.value || "").trim();
@@ -473,7 +490,8 @@ function savePanelName() {
     // Ignora falha de storage.
   }
   if (displayNameInputEl) displayNameInputEl.value = finalName;
-  setAuthStatus("ok", finalName);
+  setAuthStatus(finalName);
+  setDisplayNameEditMode(false);
 }
 
 function setTokenStatus(kind, message) {
@@ -782,7 +800,7 @@ async function updateAuthState(user) {
     openPanelScreen();
     setEntryStatus("", "");
     setEntryNextStep("");
-    setAuthStatus("warn", "Painel");
+    setAuthStatus("Usuario");
     setMainNextStep("realize login para habilitar o painel.");
     clearAvailableAccounts();
     clientSelectEl.innerHTML = "<option value=''>Selecione...</option>";
@@ -792,8 +810,9 @@ async function updateAuthState(user) {
   setEntryStatus("ok", `Sessao ativa para ${currentUser.email || "usuario"}.`);
   setEntryNextStep("clique em Abrir painel de metricas.");
   const panelName = getPanelName(currentUser);
-  setAuthStatus("ok", panelName);
+  setAuthStatus(panelName);
   if (displayNameInputEl) displayNameInputEl.value = panelName;
+  setDisplayNameEditMode(!hasSavedPanelName(currentUser));
   if (openPanelBtnEl) openPanelBtnEl.disabled = false;
   await registerPendingIdentity(currentUser);
   if (!currentUser) return;
@@ -1492,6 +1511,15 @@ function bindEvents() {
   });
   document.getElementById("logoutBtn").addEventListener("click", logout);
   if (saveDisplayNameBtnEl) saveDisplayNameBtnEl.addEventListener("click", savePanelName);
+  if (editDisplayNameBtnEl) {
+    editDisplayNameBtnEl.addEventListener("click", () => {
+      setDisplayNameEditMode(true);
+      if (displayNameInputEl) {
+        displayNameInputEl.focus();
+        displayNameInputEl.select();
+      }
+    });
+  }
   if (displayNameInputEl) {
     displayNameInputEl.addEventListener("keydown", (event) => {
       if (event.key === "Enter") savePanelName();

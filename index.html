@@ -315,6 +315,15 @@
 		}
 
 		.hint { margin: 0; color: var(--muted); font-size: 0.84rem; }
+		.greeting {
+			font-size: 1.15rem;
+			font-weight: 700;
+			color: #0f6b8f;
+			padding: 2px 0;
+		}
+		.greeting .name {
+			color: #0d8a66;
+		}
 		.rules {
 			margin: 0;
 			padding-left: 18px;
@@ -608,8 +617,8 @@
 			</div>
 
 			<div class="client-box">
-				<div id="authStatus" class="status warn">Conta nao autenticada.</div>
-				<div class="actions" style="align-items:flex-end;">
+				<div id="authStatus" class="greeting">Olá, <span class="name">Usuario</span></div>
+				<div id="displayNameEditor" class="actions" style="align-items:flex-end;">
 					<div class="field" style="flex:1; min-width:220px;">
 						<label for="displayNameInput">Nome no painel</label>
 						<input id="displayNameInput" type="text" placeholder="Ex.: Eduardo" maxlength="60" />
@@ -617,6 +626,7 @@
 					<button id="saveDisplayNameBtn" class="btn btn-soft" type="button">Salvar nome</button>
 				</div>
 				<div class="actions">
+					<button id="editDisplayNameBtn" class="btn btn-soft hidden" type="button">Alt</button>
 					<button id="logoutBtn" class="btn btn-soft" type="button">Sair</button>
 				</div>
 			</div>
