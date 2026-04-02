@@ -191,6 +191,15 @@ function brInt(value) {
   return new Intl.NumberFormat("pt-BR").format(Number(value || 0));
 }
 
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function normalizeResultType(type) {
   const t = String(type || "").toLowerCase();
   if (t.includes("lead")) return "Lead";
@@ -940,6 +949,102 @@ async function loadAdvice(extra = {}) {
   setMainNextStep("revise as recomendacoes e ajuste as campanhas.");
 }
 
+function exportExecutivePdf() {
+  if (!lastMetricsPayload) {
+    setStatus("warn", "Atualize métricas antes de exportar o PDF.");
+    return;
+  }
+
+  const now = new Date().toLocaleString("pt-BR");
+  const clientLabel = lastMetricsPayload.clientName || "Cliente";
+  const periodLabel = `${lastMetricsPayload.dateStart || "-"} até ${lastMetricsPayload.dateEnd || "-"}`;
+  const indicadores = [
+    ["Gasto", kSpendEl.textContent],
+    ["Público atingido", kReachEl.textContent],
+    ["Impressões", kImpressionsEl.textContent],
+    ["Cliques", kClicksEl.textContent],
+    ["Leads", kLeadsEl.textContent],
+    ["CTR", kCtrEl.textContent],
+    ["CPC", kCpcEl.textContent],
+    ["CPM", document.getElementById("kCpm") ? document.getElementById("kCpm").textContent : "-"],
+    ["Frequência", kFrequencyEl.textContent],
+    ["Resultado principal", `${kResultsEl.textContent} (${kResultTypeEl.textContent})`],
+    ["Investimento diário", kDailySpendEl.textContent]
+  ];
+
+  const stageLines = Array.from(stageBarsEl.querySelectorAll("div > div:first-child"))
+    .map((el) => el.textContent.trim())
+    .filter(Boolean);
+
+  const topAdsLines = Array.from(topAdsListEl.querySelectorAll("li"))
+    .map((el) => el.textContent.trim())
+    .filter(Boolean);
+
+  const win = window.open("", "_blank", "width=1100,height=800");
+  if (!win) {
+    setStatus("warn", "O navegador bloqueou a janela de exportação. Permita pop-ups para continuar.");
+    return;
+  }
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Relatório Executivo - ${escapeHtml(clientLabel)}</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 28px; color: #102a43; }
+    h1 { margin: 0 0 6px; font-size: 26px; }
+    .meta { color: #486581; margin-bottom: 18px; }
+    .section { margin-top: 20px; }
+    .box { border: 1px solid #d9e5ef; border-radius: 10px; padding: 12px; background: #f8fbff; }
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .item { border: 1px solid #d9e5ef; border-radius: 10px; padding: 10px; }
+    .k { font-size: 12px; color: #486581; text-transform: uppercase; }
+    .v { font-size: 20px; font-weight: 700; margin-top: 4px; }
+    ul, ol { margin: 8px 0 0 18px; }
+  </style>
+</head>
+<body>
+  <h1>Relatório Executivo de Campanhas</h1>
+  <div class="meta">Cliente: ${escapeHtml(clientLabel)} | Período: ${escapeHtml(periodLabel)} | Gerado em: ${escapeHtml(now)}</div>
+
+  <div class="section">
+    <h2>Indicadores principais</h2>
+    <div class="grid">
+      ${indicadores.map(([k, v]) => `<div class="item"><div class="k">${escapeHtml(k)}</div><div class="v">${escapeHtml(v)}</div></div>`).join("")}
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Objetivo estratégico</h2>
+    <div class="box">${escapeHtml(objectiveSummaryEl.textContent)}</div>
+  </div>
+
+  <div class="section">
+    <h2>Distribuição por etapa</h2>
+    <div class="box">
+      <ul>${stageLines.map((line) => `<li>${escapeHtml(line)}</li>`).join("") || "<li>Sem dados.</li>"}</ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Top anúncios por resultado</h2>
+    <div class="box">
+      <ol>${topAdsLines.map((line) => `<li>${escapeHtml(line)}</li>`).join("") || "<li>Sem dados.</li>"}</ol>
+    </div>
+  </div>
+
+  <script>
+    window.onload = () => { window.print(); };
+  </script>
+</body>
+</html>`;
+
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+}
+
 function bindEvents() {
       // Relatórios: intervalo de datas simples + atalhos
       const dateStartEl = document.getElementById("dateStart");
@@ -1032,6 +1137,7 @@ function bindEvents() {
   document.getElementById("saveClientBtn").addEventListener("click", saveClient);
   document.getElementById("removeClientBtn").addEventListener("click", removeClient);
   document.getElementById("loadMetricsBtn").addEventListener("click", loadMetrics);
+  document.getElementById("exportPdfBtn").addEventListener("click", exportExecutivePdf);
   document.getElementById("loadAdviceBtn").addEventListener("click", loadAdvice);
   signupPasswordEl.addEventListener("input", () => updatePolicy(signupPasswordEl, signupPolicyEl));
   resetPasswordEl.addEventListener("input", () => updatePolicy(resetPasswordEl, resetPolicyEl));
