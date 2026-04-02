@@ -1400,6 +1400,16 @@ function bindEvents() {
   if (cancelLoginBtn) cancelLoginBtn.addEventListener("click", () => toggleAuthCard(loginCardEl, false));
   document.getElementById("doSignupBtn").addEventListener("click", signUp);
   document.getElementById("doLoginBtn").addEventListener("click", signIn);
+  if (loginEmailEl) {
+    loginEmailEl.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") signIn();
+    });
+  }
+  if (loginPasswordEl) {
+    loginPasswordEl.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") signIn();
+    });
+  }
   document.getElementById("doRecoverBtn").addEventListener("click", sendRecoveryEmail);
   document.getElementById("doResetBtn").addEventListener("click", updateRecoveredPassword);
   document.getElementById("backToEntryFromResetBtn").addEventListener("click", () => {
