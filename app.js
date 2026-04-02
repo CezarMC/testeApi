@@ -149,12 +149,14 @@ const tokenStatusEl = document.getElementById("tokenStatus");
 const signupEmailEl = document.getElementById("signupEmail");
 const signupPasswordEl = document.getElementById("signupPassword");
 const signupConfirmEl = document.getElementById("signupConfirm");
+const signupRulesEl = document.getElementById("signupRules");
 const signupPolicyEl = document.getElementById("signupPolicy");
 const loginEmailEl = document.getElementById("loginEmail");
 const loginPasswordEl = document.getElementById("loginPassword");
 const recoverEmailEl = document.getElementById("recoverEmail");
 const resetPasswordEl = document.getElementById("resetPassword");
 const resetConfirmEl = document.getElementById("resetConfirm");
+const resetRulesEl = document.getElementById("resetRules");
 const resetPolicyEl = document.getElementById("resetPolicy");
 const openPanelBtnEl = document.getElementById("openPanelBtn");
 
@@ -483,19 +485,43 @@ function toggleAuthCard(card, show) {
   card.classList.toggle("hidden", !show);
 }
 
+function getPasswordChecks(password) {
+  return {
+    length: password.length >= 12,
+    upper: /[A-Z]/.test(password),
+    lower: /[a-z]/.test(password),
+    number: /\d/.test(password),
+    symbol: /[^A-Za-z0-9]/.test(password),
+    noSpaces: !/\s/.test(password)
+  };
+}
+
 function validateStrongPassword(password) {
+  const checks = getPasswordChecks(password);
   const issues = [];
-  if (password.length < 12) issues.push("minimo de 12 caracteres");
-  if (!/[A-Z]/.test(password)) issues.push("1 letra maiuscula");
-  if (!/[a-z]/.test(password)) issues.push("1 letra minuscula");
-  if (!/\d/.test(password)) issues.push("1 numero");
-  if (!/[^A-Za-z0-9]/.test(password)) issues.push("1 simbolo");
-  if (/\s/.test(password)) issues.push("sem espacos");
+  if (!checks.length) issues.push("minimo de 12 caracteres");
+  if (!checks.upper) issues.push("1 letra maiuscula");
+  if (!checks.lower) issues.push("1 letra minuscula");
+  if (!checks.number) issues.push("1 numero");
+  if (!checks.symbol) issues.push("1 simbolo");
+  if (!checks.noSpaces) issues.push("sem espacos");
   return { ok: issues.length === 0, issues };
 }
 
-function updatePolicy(inputEl, outputEl) {
-  const password = String(inputEl.value || "").trim();
+function renderPasswordRules(listEl, checks) {
+  if (!listEl) return;
+  listEl.querySelectorAll("[data-rule]").forEach((item) => {
+    const rule = item.dataset.rule;
+    const ok = Boolean(checks?.[rule]);
+    item.classList.toggle("ok", ok);
+    item.classList.toggle("pending", !ok);
+  });
+}
+
+function updatePolicy(inputEl, outputEl, rulesEl) {
+  const password = String(inputEl.value || "");
+  const checks = getPasswordChecks(password);
+  renderPasswordRules(rulesEl, checks);
   if (!password) {
     outputEl.className = "policy warn";
     outputEl.textContent = "Senha deve ter 12+ caracteres, maiuscula, minuscula, numero e simbolo.";
@@ -1247,8 +1273,10 @@ function bindEvents() {
   document.getElementById("loadAdviceBtn").addEventListener("click", loadAdvice);
   document.getElementById("cvBackBtn").addEventListener("click", closeClientView);
   document.getElementById("cvPrintBtn").addEventListener("click", exportExecutivePdf);
-  signupPasswordEl.addEventListener("input", () => updatePolicy(signupPasswordEl, signupPolicyEl));
-  resetPasswordEl.addEventListener("input", () => updatePolicy(resetPasswordEl, resetPolicyEl));
+  signupPasswordEl.addEventListener("input", () => updatePolicy(signupPasswordEl, signupPolicyEl, signupRulesEl));
+  resetPasswordEl.addEventListener("input", () => updatePolicy(resetPasswordEl, resetPolicyEl, resetRulesEl));
+  updatePolicy(signupPasswordEl, signupPolicyEl, signupRulesEl);
+  updatePolicy(resetPasswordEl, resetPolicyEl, resetRulesEl);
   clientSelectEl.addEventListener("change", () => {
     const option = clientSelectEl.options[clientSelectEl.selectedIndex];
     if (!option || !option.value) return;

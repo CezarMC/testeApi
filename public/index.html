@@ -304,6 +304,18 @@
 			line-height: 1.45;
 		}
 
+		.rules li {
+			transition: color 160ms ease;
+		}
+
+		.rules li.ok {
+			color: var(--ok);
+		}
+
+		.rules li.pending {
+			color: var(--muted);
+		}
+
 		.policy { font-size: 0.82rem; margin: 0; line-height: 1.4; }
 		.policy.ok { color: var(--ok); }
 		.policy.warn { color: var(--warn); }
@@ -497,13 +509,13 @@
 			<input id="signupEmail" type="email" placeholder="email" autocomplete="email" />
 			<input id="signupPassword" type="password" placeholder="Crie uma senha forte" autocomplete="new-password" />
 			<input id="signupConfirm" type="password" placeholder="Confirme a senha" autocomplete="new-password" />
-			<ul class="rules">
-				<li>Minimo de 12 caracteres</li>
-				<li>Pelo menos 1 letra maiuscula</li>
-				<li>Pelo menos 1 letra minuscula</li>
-				<li>Pelo menos 1 numero</li>
-				<li>Pelo menos 1 simbolo</li>
-				<li>Sem espacos</li>
+			<ul id="signupRules" class="rules">
+				<li data-rule="length">Minimo de 12 caracteres</li>
+				<li data-rule="upper">Pelo menos 1 letra maiuscula</li>
+				<li data-rule="lower">Pelo menos 1 letra minuscula</li>
+				<li data-rule="number">Pelo menos 1 numero</li>
+				<li data-rule="symbol">Pelo menos 1 simbolo</li>
+				<li data-rule="noSpaces">Sem espacos</li>
 			</ul>
 			<p id="signupPolicy" class="policy warn">Senha deve ter 12+ caracteres, maiuscula, minuscula, numero e simbolo.</p>
 			<div class="actions">
@@ -552,13 +564,13 @@
 			<label for="resetPassword">Nova senha</label>
 			<input id="resetPassword" type="password" placeholder="Nova senha forte" autocomplete="new-password" />
 			<input id="resetConfirm" type="password" placeholder="Confirme a nova senha" autocomplete="new-password" />
-			<ul class="rules">
-				<li>Minimo de 12 caracteres</li>
-				<li>Pelo menos 1 letra maiuscula</li>
-				<li>Pelo menos 1 letra minuscula</li>
-				<li>Pelo menos 1 numero</li>
-				<li>Pelo menos 1 simbolo</li>
-				<li>Sem espacos</li>
+			<ul id="resetRules" class="rules">
+				<li data-rule="length">Minimo de 12 caracteres</li>
+				<li data-rule="upper">Pelo menos 1 letra maiuscula</li>
+				<li data-rule="lower">Pelo menos 1 letra minuscula</li>
+				<li data-rule="number">Pelo menos 1 numero</li>
+				<li data-rule="symbol">Pelo menos 1 simbolo</li>
+				<li data-rule="noSpaces">Sem espacos</li>
 			</ul>
 			<p id="resetPolicy" class="policy warn">Senha deve ter 12+ caracteres, maiuscula, minuscula, numero e simbolo.</p>
 			<div class="actions">
