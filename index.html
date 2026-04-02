@@ -73,6 +73,40 @@
 			font-size: clamp(1.25rem, 2vw, 1.9rem);
 		}
 
+		.brand-lockup {
+			display: grid;
+			gap: 6px;
+			margin-bottom: 4px;
+		}
+
+		.brand-kicker {
+			font-size: 0.72rem;
+			font-weight: 700;
+			letter-spacing: 0.14em;
+			text-transform: uppercase;
+			color: #2f5d83;
+		}
+
+		.brand-name {
+			margin: 0;
+			font-size: clamp(1.9rem, 5.8vw, 3rem);
+			line-height: 1;
+			font-weight: 700;
+			letter-spacing: -0.03em;
+			background: linear-gradient(120deg, #0e4f8a, #0b7dbc 55%, #31b2d6);
+			-webkit-background-clip: text;
+			background-clip: text;
+			color: transparent;
+		}
+
+		.brand-sub {
+			margin: 0;
+			font-size: 0.84rem;
+			color: #3e5871;
+			font-weight: 600;
+			letter-spacing: 0.02em;
+		}
+
 		.subtitle {
 			margin: 4px 0 0;
 			color: var(--muted);
@@ -366,8 +400,10 @@
 </head>
 <body>
 	<section class="panel entry" id="entryScreen">
-		<div>
-			<h1>Acesso ao Sistema</h1>
+		<div class="brand-lockup">
+			<span class="brand-kicker">Plataforma de Performance</span>
+			<h1 class="brand-name">InsightFlow</h1>
+			<p class="brand-sub">Controle inteligente de campanhas Meta</p>
 		</div>
 
 		<div id="entryStatus" class="status warn">Nao autenticado. Crie conta ou entre.</div>
