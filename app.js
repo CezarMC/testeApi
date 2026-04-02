@@ -68,7 +68,8 @@ async function initFacebookLogin(publicConfig = {}) {
 }
 
 function showFbPanel() {
-  document.getElementById('fbPanel').style.display = 'block';
+  const panel = document.getElementById('fbPanel');
+  if (panel) panel.style.display = 'block';
 }
 
 function updateFbStatus(msg, kind = '') {
