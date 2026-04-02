@@ -485,6 +485,15 @@ function toggleAuthCard(card, show) {
   card.classList.toggle("hidden", !show);
 }
 
+function setSignupMode(active) {
+  toggleAuthCard(signupCardEl, active);
+  if (loginCardEl) loginCardEl.classList.toggle("hidden", active);
+  const recoverBtn = document.getElementById("openRecoverBtn");
+  const entryCta = document.querySelector(".entry-cta");
+  if (recoverBtn) recoverBtn.classList.toggle("hidden", active);
+  if (entryCta) entryCta.classList.toggle("hidden", active);
+}
+
 function getPasswordChecks(password) {
   return {
     length: password.length >= 12,
@@ -619,6 +628,7 @@ function ensureSupabaseReady() {
 async function updateAuthState(user) {
   currentUser = user || null;
   if (!currentUser) {
+    setSignupMode(false);
     openPanelBtnEl.disabled = true;
     showOnly(entryScreenEl);
     setEntryStatus("", "");
@@ -636,6 +646,9 @@ async function updateAuthState(user) {
   openPanelBtnEl.disabled = false;
   await checkTokenStatus();
   await loadClients();
+  showOnly(metricsAppEl);
+  setStatus("ok", "Painel aberto automaticamente.");
+  setMainNextStep("salve o token Meta, cadastre um cliente e atualize as metricas.");
 }
 
 async function signUp() {
@@ -664,16 +677,14 @@ async function signUp() {
     return;
   }
   if (data?.session?.user) {
-    toggleAuthCard(signupCardEl, false);
+    setSignupMode(false);
     await updateAuthState(data.session.user);
-    showOnly(metricsAppEl);
     setStatus("ok", "Conta criada e acesso liberado automaticamente.");
-    setMainNextStep("salve o token Meta, cadastre um cliente e atualize as metricas.");
     return;
   }
   setEntryStatus("ok", "Conta criada. Verifique seu e-mail para confirmar o cadastro.");
   setEntryNextStep("confirme o e-mail e depois clique em Entrar.");
-  toggleAuthCard(signupCardEl, false);
+  setSignupMode(false);
 }
 
 async function signIn() {
@@ -1224,7 +1235,7 @@ function bindEvents() {
       adviceQuestion.value = "";
     };
   document.getElementById("showSignupBtn").addEventListener("click", () => {
-    toggleAuthCard(signupCardEl, true);
+    setSignupMode(true);
     setEntryNextStep("preencha e-mail, senha forte e confirme a conta.");
   });
   const showLoginBtn = document.getElementById("showLoginBtn");
@@ -1239,10 +1250,11 @@ function bindEvents() {
     setEntryNextStep("informe o e-mail e envie o link de recuperacao.");
   });
   document.getElementById("backToEntryBtn").addEventListener("click", () => {
+    setSignupMode(false);
     showOnly(entryScreenEl);
     setEntryNextStep("clique em Criar conta, Entrar ou Recuperar senha.");
   });
-  document.getElementById("cancelSignupBtn").addEventListener("click", () => toggleAuthCard(signupCardEl, false));
+  document.getElementById("cancelSignupBtn").addEventListener("click", () => setSignupMode(false));
   const cancelLoginBtn = document.getElementById("cancelLoginBtn");
   if (cancelLoginBtn) cancelLoginBtn.addEventListener("click", () => toggleAuthCard(loginCardEl, false));
   document.getElementById("doSignupBtn").addEventListener("click", signUp);
@@ -1250,6 +1262,7 @@ function bindEvents() {
   document.getElementById("doRecoverBtn").addEventListener("click", sendRecoveryEmail);
   document.getElementById("doResetBtn").addEventListener("click", updateRecoveredPassword);
   document.getElementById("backToEntryFromResetBtn").addEventListener("click", () => {
+    setSignupMode(false);
     showOnly(entryScreenEl);
     setEntryNextStep("clique em Entrar com sua nova senha.");
   });
