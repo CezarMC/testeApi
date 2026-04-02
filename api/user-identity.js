@@ -74,6 +74,34 @@ module.exports = async function handler(request, response) {
 
   const admin = createAdminClient();
 
+  if (action === "resolve") {
+    const docHash = hashDocument(doc.normalized);
+    const { data, error } = await admin
+      .from("user_identities")
+      .select("user_id")
+      .eq("document_hash", docHash)
+      .maybeSingle();
+
+    if (error) {
+      return json(response, 500, { error: "Erro ao localizar documento.", detail: error.message });
+    }
+
+    if (!data?.user_id) {
+      return json(response, 404, { error: "Documento nao encontrado." });
+    }
+
+    const { data: userData, error: userError } = await admin.auth.admin.getUserById(data.user_id);
+    if (userError || !userData?.user?.email) {
+      return json(response, 404, { error: "Conta nao encontrada para este documento." });
+    }
+
+    return json(response, 200, {
+      ok: true,
+      email: String(userData.user.email || "").toLowerCase(),
+      type: doc.type
+    });
+  }
+
   if (action === "check") {
     const docHash = hashDocument(doc.normalized);
     const { data, error } = await admin
@@ -134,5 +162,5 @@ module.exports = async function handler(request, response) {
     return json(response, 200, { ok: true, type: doc.type });
   }
 
-  return json(response, 400, { error: "Acao invalida. Use check ou register." });
+  return json(response, 400, { error: "Acao invalida. Use resolve, check ou register." });
 };

@@ -604,6 +604,17 @@ async function registerUserIdentity(document) {
   return apiPost("/api/user-identity", { action: "register", document });
 }
 
+async function resolveEmailFromDocument(document) {
+  const res = await fetch("/api/user-identity", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "resolve", document })
+  });
+  let data;
+  try { data = await res.json(); } catch (_) { data = { error: "Resposta invalida." }; }
+  return { ok: res.ok, status: res.status, data };
+}
+
 async function registerPendingIdentity(user) {
   if (!user || !user.email) return;
   let pending;
@@ -801,11 +812,29 @@ async function signUp() {
 
 async function signIn() {
   if (!ensureSupabaseReady()) return;
-  const email = loginEmailEl.value.trim().toLowerCase();
+  const identifier = String(loginEmailEl.value || "").trim().toLowerCase();
   const password = loginPasswordEl.value;
+  if (!identifier) {
+    setEntryStatus("warn", "Informe email, CPF ou CNPJ.");
+    return;
+  }
+  let email = identifier;
+  if (!identifier.includes("@")) {
+    const parsed = parseDocument(identifier);
+    if (!parsed.ok) {
+      setEntryStatus("warn", "Use email valido ou CPF/CNPJ valido.");
+      return;
+    }
+    const resolved = await resolveEmailFromDocument(parsed.normalized);
+    if (!resolved.ok || !resolved.data?.email) {
+      setEntryStatus("err", "Login falhou. Verifique identificador e senha.");
+      return;
+    }
+    email = String(resolved.data.email || "").toLowerCase();
+  }
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
-    setEntryStatus("err", "Login falhou. Se necessario, use Recuperar senha.");
+    setEntryStatus("err", "Login falhou. Verifique identificador e senha.");
     setEntryNextStep("confira e-mail/senha ou abra Recuperar senha.");
     return;
   }
