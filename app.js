@@ -382,7 +382,15 @@ async function loadAvailableAccounts() {
     setStatus("warn", "Nao foi possivel listar contas do token agora.");
     return;
   }
-  renderAvailableAccounts(result.data.accounts || []);
+  const accounts = result.data.accounts || [];
+  renderAvailableAccounts(accounts);
+  if (accounts.length > 0) {
+    availableAccountSelectEl.value = String(accounts[0].accountId || accounts[0].id || "");
+    const option = availableAccountSelectEl.options[availableAccountSelectEl.selectedIndex];
+    if (option && option.value) {
+      await ensureClientFromLinkedAccount(option);
+    }
+  }
 }
 
 function showOnly(screen) {
@@ -670,6 +678,49 @@ function renderClients(clients) {
   });
 }
 
+function getLinkedAccountPayload(option) {
+  if (!option || !option.value) return null;
+  const label = String(option.textContent || "");
+  const name = (label.split(" - act_")[0] || label || "Conta Meta").trim();
+  return {
+    name,
+    adAccountId: String(option.dataset.account || option.value || "").trim(),
+    apiVersion: String(option.dataset.apiVersion || "v25.0").trim() || "v25.0"
+  };
+}
+
+async function ensureClientFromLinkedAccount(option) {
+  const linked = getLinkedAccountPayload(option);
+  if (!linked || !linked.adAccountId) return false;
+
+  clientNameEl.value = linked.name;
+  adAccountIdEl.value = linked.adAccountId;
+  apiVersionEl.value = linked.apiVersion;
+
+  const payload = {
+    action: "save",
+    client: {
+      id: clientSelectEl.value || "",
+      name: linked.name,
+      adAccountId: linked.adAccountId,
+      apiVersion: linked.apiVersion
+    }
+  };
+
+  const result = await apiPost("/api/user-clients", payload);
+  if (!result.ok || !result.data?.client?.id) {
+    setStatus("err", result.data?.error || "Erro ao ativar conta vinculada.");
+    setMainNextStep("confira o token Meta e tente novamente.");
+    return false;
+  }
+
+  renderClients(result.data.clients || []);
+  clientSelectEl.value = result.data.client.id;
+  setStatus("ok", "Conta vinculada ativada automaticamente.");
+  setMainNextStep("agora clique em Atualizar metricas.");
+  return true;
+}
+
 async function saveClient() {
   const payload = {
     action: "save",
@@ -808,11 +859,17 @@ function updateTable(rows) {
 }
 
 async function loadMetrics() {
-  const selected = clientSelectEl.options[clientSelectEl.selectedIndex];
+  let selected = clientSelectEl.options[clientSelectEl.selectedIndex];
   if (!selected || !selected.value) {
-    setStatus("warn", "Salve e selecione um cliente antes de consultar.");
-    setMainNextStep("selecione uma conta do token, preencha nome do cliente e salve.");
-    return;
+    const linkedOption = availableAccountSelectEl.options[availableAccountSelectEl.selectedIndex];
+    if (!linkedOption || !linkedOption.value) {
+      setStatus("warn", "Selecione uma conta vinculada ao token.");
+      setMainNextStep("escolha uma conta vinculada e tente novamente.");
+      return;
+    }
+    const created = await ensureClientFromLinkedAccount(linkedOption);
+    if (!created) return;
+    selected = clientSelectEl.options[clientSelectEl.selectedIndex];
   }
   const dateStartEl = document.getElementById("dateStart");
   const dateEndEl = document.getElementById("dateEnd");
@@ -987,12 +1044,7 @@ function bindEvents() {
   availableAccountSelectEl.addEventListener("change", () => {
     const option = availableAccountSelectEl.options[availableAccountSelectEl.selectedIndex];
     if (!option || !option.value) return;
-    adAccountIdEl.value = option.dataset.account || "";
-    apiVersionEl.value = option.dataset.apiVersion || "v25.0";
-    if (!clientNameEl.value.trim()) {
-      clientNameEl.value = (option.textContent.split(" - ")[0] || "").trim();
-    }
-    setMainNextStep("confirme o nome do cliente e clique em Salvar cliente.");
+    ensureClientFromLinkedAccount(option);
   });
   document.querySelectorAll("#periodChips .chip").forEach((chip) => {
     chip.addEventListener("click", () => {
