@@ -723,7 +723,7 @@ async function updateAuthState(user) {
   currentUser = user || null;
   if (!currentUser) {
     setSignupMode(false);
-    openPanelBtnEl.disabled = true;
+    if (openPanelBtnEl) openPanelBtnEl.disabled = true;
     showOnly(entryScreenEl);
     setEntryStatus("", "");
     setEntryNextStep("");
@@ -737,7 +737,7 @@ async function updateAuthState(user) {
   setEntryStatus("ok", `Sessao ativa para ${currentUser.email || "usuario"}.`);
   setEntryNextStep("clique em Abrir painel de metricas.");
   setAuthStatus("ok", `Conta conectada: ${currentUser.email || "usuario"}.`);
-  openPanelBtnEl.disabled = false;
+  if (openPanelBtnEl) openPanelBtnEl.disabled = false;
   await registerPendingIdentity(currentUser);
   if (!currentUser) return;
   await checkTokenStatus();
@@ -1408,15 +1408,18 @@ function bindEvents() {
     setEntryNextStep("clique em Entrar com sua nova senha.");
   });
   document.getElementById("logoutBtn").addEventListener("click", logout);
-  document.getElementById("openPanelBtn").addEventListener("click", () => {
-    if (!currentUser) {
-      setEntryStatus("warn", "Entre antes de abrir o painel.");
-      return;
-    }
-    showOnly(metricsAppEl);
-    setStatus("ok", "Painel aberto.");
-    setMainNextStep("salve o token Meta, cadastre um cliente e atualize as metricas.");
-  });
+  const openPanelBtn = document.getElementById("openPanelBtn");
+  if (openPanelBtn) {
+    openPanelBtn.addEventListener("click", () => {
+      if (!currentUser) {
+        setEntryStatus("warn", "Entre antes de abrir o painel.");
+        return;
+      }
+      showOnly(metricsAppEl);
+      setStatus("ok", "Painel aberto.");
+      setMainNextStep("salve o token Meta, cadastre um cliente e atualize as metricas.");
+    });
+  }
   document.getElementById("saveTokenBtn").addEventListener("click", saveMetaToken);
   document.getElementById("deleteTokenBtn").addEventListener("click", deleteMetaToken);
   document.getElementById("saveClientBtn").addEventListener("click", saveClient);
