@@ -414,7 +414,8 @@ function setMainNextStep(message) {
 }
 
 function setEntryNextStep(message) {
-  entryNextStepEl.textContent = `Proximo passo: ${message}`;
+  if (!entryNextStepEl) return;
+  entryNextStepEl.textContent = message || "";
 }
 
 function setAuthStatus(kind, message) {
@@ -510,7 +511,7 @@ async function apiPost(url, payload) {
   const { data: sessionData } = await supabase.auth.getSession();
   const token = sessionData.session?.access_token || "";
   if (!token) {
-    setEntryStatus("warn", "Faca login primeiro.");
+    setEntryStatus("warn", "Entre para continuar.");
     return { ok: false, blocked: true, data: { error: "Nao autenticado." } };
   }
   const res = await fetch(url, {
