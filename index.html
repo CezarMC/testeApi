@@ -1,545 +1,570 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <!-- Facebook SDK -->
-  <script async defer crossorigin="anonymous" src="https://connect.facebook.net/pt_BR/sdk.js"></script>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AOPA | Painel Meta Business</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
-  <style>
-    :root {
-      --bg-a: #051923;
-      --bg-b: #003554;
-      --paper: rgba(255, 255, 255, 0.94);
-      --ink: #0f2940;
-      --muted: #4f6478;
-      --ok: #1f8f5f;
-      --warn: #b87413;
-      --err: #b33030;
-      --ring: #0b78da;
-    }
+	<!-- Facebook SDK -->
+	<script async defer crossorigin="anonymous" src="https://connect.facebook.net/pt_BR/sdk.js"></script>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>AOPA | Painel Meta Business</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+	<style>
+		:root {
+			--bg-a: #051923;
+			--bg-b: #003554;
+			--paper: rgba(255, 255, 255, 0.94);
+			--ink: #0f2940;
+			--muted: #4f6478;
+			--ok: #1f8f5f;
+			--warn: #b87413;
+			--err: #b33030;
+			--ring: #0b78da;
+		}
 
-    * { box-sizing: border-box; }
+		* { box-sizing: border-box; }
 
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: "Sora", sans-serif;
-      color: var(--ink);
-      background:
-        radial-gradient(1200px 560px at -10% -20%, rgba(0, 166, 251, 0.35), transparent 50%),
-        radial-gradient(980px 500px at 120% -10%, rgba(227, 246, 255, 0.18), transparent 45%),
-        linear-gradient(130deg, var(--bg-a), #003554);
-      padding: 18px;
-    }
+		body {
+			margin: 0;
+			min-height: 100vh;
+			font-family: "Sora", sans-serif;
+			color: var(--ink);
+			background:
+				radial-gradient(1200px 560px at -10% -20%, rgba(0, 166, 251, 0.35), transparent 50%),
+				radial-gradient(980px 500px at 120% -10%, rgba(227, 246, 255, 0.18), transparent 45%),
+				linear-gradient(130deg, var(--bg-a), #003554);
+			padding: 18px;
+		}
 
-    .panel {
-      background: var(--paper);
-      border-radius: 16px;
-      border: 1px solid rgba(10, 36, 61, 0.12);
-      box-shadow: 0 14px 32px rgba(3, 20, 36, 0.2);
-    }
+		.panel {
+			background: var(--paper);
+			border-radius: 16px;
+			border: 1px solid rgba(10, 36, 61, 0.12);
+			box-shadow: 0 14px 32px rgba(3, 20, 36, 0.2);
+		}
 
-    .entry,
-    .recover,
-    .reset {
-      max-width: 760px;
-      margin: 0 auto 16px;
-      padding: 22px;
-      display: grid;
-      gap: 12px;
-      animation: in 420ms ease;
-    }
+		.entry,
+		.recover,
+		.reset {
+			max-width: 760px;
+			margin: 0 auto 16px;
+			padding: 22px;
+			display: grid;
+			gap: 12px;
+			animation: in 420ms ease;
+		}
 
-    .app {
-      max-width: 1240px;
-      margin: 0 auto;
-      display: grid;
-      gap: 16px;
-      grid-template-columns: 1.15fr 0.85fr;
-      animation: in 420ms ease;
-    }
+		.app {
+			max-width: 1240px;
+			margin: 0 auto;
+			display: grid;
+			gap: 16px;
+			grid-template-columns: 1.15fr 0.85fr;
+			animation: in 420ms ease;
+		}
 
-    .left { padding: 20px; display: grid; gap: 12px; }
-    .right { padding: 20px; display: grid; gap: 12px; align-content: start; }
-    .hidden { display: none !important; }
+		.left { padding: 20px; display: grid; gap: 12px; }
+		.right { padding: 20px; display: grid; gap: 12px; align-content: start; }
+		.hidden { display: none !important; }
 
-    h1 {
-      margin: 0;
-      font-size: clamp(1.25rem, 2vw, 1.9rem);
-    }
+		h1 {
+			margin: 0;
+			font-size: clamp(1.25rem, 2vw, 1.9rem);
+		}
 
-    .subtitle {
-      margin: 4px 0 0;
-      color: var(--muted);
-      font-size: 0.92rem;
-    }
+		.subtitle {
+			margin: 4px 0 0;
+			color: var(--muted);
+			font-size: 0.92rem;
+		}
 
-    .badge {
-      display: inline-block;
-      border-radius: 999px;
-      background: rgba(11, 120, 218, 0.12);
-      color: #0b5da8;
-      font-size: 0.75rem;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      padding: 6px 10px;
-      margin-bottom: 8px;
-    }
+		.badge {
+			display: inline-block;
+			border-radius: 999px;
+			background: rgba(11, 120, 218, 0.12);
+			color: #0b5da8;
+			font-size: 0.75rem;
+			font-weight: 700;
+			letter-spacing: 0.05em;
+			text-transform: uppercase;
+			padding: 6px 10px;
+			margin-bottom: 8px;
+		}
 
-    .client-box {
-      border: 1px solid rgba(15, 41, 64, 0.15);
-      border-radius: 12px;
-      padding: 12px;
-      background: #f4f9fe;
-      display: grid;
-      gap: 10px;
-    }
+		.client-box {
+			border: 1px solid rgba(15, 41, 64, 0.15);
+			border-radius: 12px;
+			padding: 12px;
+			background: #f4f9fe;
+			display: grid;
+			gap: 10px;
+		}
 
-    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
-    .row { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .row-3 { display: grid; gap: 10px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .field { display: grid; gap: 6px; }
+		.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+		.row { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+		.row-3 { display: grid; gap: 10px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+		.field { display: grid; gap: 6px; }
 
-    label {
-      font-size: 0.78rem;
-      font-weight: 700;
-      color: #193b59;
-      letter-spacing: 0.03em;
-      text-transform: uppercase;
-    }
+		label {
+			font-size: 0.78rem;
+			font-weight: 700;
+			color: #193b59;
+			letter-spacing: 0.03em;
+			text-transform: uppercase;
+		}
 
-    input, select, button {
-      font-family: inherit;
-      font-size: 0.92rem;
-    }
+		input, select, button {
+			font-family: inherit;
+			font-size: 0.92rem;
+		}
 
-    input, select {
-      width: 100%;
-      border: 1px solid rgba(15, 41, 64, 0.2);
-      border-radius: 10px;
-      background: #fbfdff;
-      color: var(--ink);
-      padding: 10px 11px;
-    }
+		input, select {
+			width: 100%;
+			border: 1px solid rgba(15, 41, 64, 0.2);
+			border-radius: 10px;
+			background: #fbfdff;
+			color: var(--ink);
+			padding: 10px 11px;
+		}
 
-    input:focus, select:focus {
-      outline: none;
-      border-color: var(--ring);
-      box-shadow: 0 0 0 4px rgba(11, 120, 218, 0.14);
-    }
+		input:focus, select:focus {
+			outline: none;
+			border-color: var(--ring);
+			box-shadow: 0 0 0 4px rgba(11, 120, 218, 0.14);
+		}
 
-    .btn {
-      border: 0;
-      border-radius: 10px;
-      padding: 10px 14px;
-      font-weight: 700;
-      cursor: pointer;
-    }
+		.btn {
+			border: 0;
+			border-radius: 10px;
+			padding: 10px 14px;
+			font-weight: 700;
+			cursor: pointer;
+		}
 
-    .btn-primary {
-      color: #fff;
-      background: linear-gradient(140deg, #0a68c2, #0a8db0);
-    }
+		.btn-primary {
+			color: #fff;
+			background: linear-gradient(140deg, #0a68c2, #0a8db0);
+		}
 
-    .btn-soft {
-      color: #173a58;
-      background: #e7f0fa;
-    }
+		.btn-soft {
+			color: #173a58;
+			background: #e7f0fa;
+		}
 
-    .status {
-      border-radius: 10px;
-      border: 1px solid transparent;
-      background: #edf4fb;
-      color: #224764;
-      padding: 10px 12px;
-      font-size: 0.9rem;
-      font-weight: 600;
-    }
+		.status {
+			border-radius: 10px;
+			border: 1px solid transparent;
+			background: #edf4fb;
+			color: #224764;
+			padding: 10px 12px;
+			font-size: 0.9rem;
+			font-weight: 600;
+		}
 
-    .status.ok { background: rgba(31, 143, 95, 0.12); border-color: rgba(31, 143, 95, 0.28); color: var(--ok); }
-    .status.warn { background: rgba(184, 116, 19, 0.12); border-color: rgba(184, 116, 19, 0.28); color: var(--warn); }
-    .status.err { background: rgba(179, 48, 48, 0.12); border-color: rgba(179, 48, 48, 0.28); color: var(--err); }
+		.status.ok { background: rgba(31, 143, 95, 0.12); border-color: rgba(31, 143, 95, 0.28); color: var(--ok); }
+		.status.warn { background: rgba(184, 116, 19, 0.12); border-color: rgba(184, 116, 19, 0.28); color: var(--warn); }
+		.status.err { background: rgba(179, 48, 48, 0.12); border-color: rgba(179, 48, 48, 0.28); color: var(--err); }
 
-    .next-step {
-      border: 1px solid rgba(10, 36, 61, 0.14);
-      border-radius: 10px;
-      background: #f5fbff;
-      padding: 10px 12px;
-      font-size: 0.88rem;
-      color: #153a58;
-      line-height: 1.45;
-    }
+		.next-step {
+			border: 1px solid rgba(10, 36, 61, 0.14);
+			border-radius: 10px;
+			background: #f5fbff;
+			padding: 10px 12px;
+			font-size: 0.88rem;
+			color: #153a58;
+			line-height: 1.45;
+		}
 
-    .hint { margin: 0; color: var(--muted); font-size: 0.84rem; }
-    .rules {
-      margin: 0;
-      padding-left: 18px;
-      font-size: 0.82rem;
-      color: var(--muted);
-      line-height: 1.45;
-    }
+		.hint { margin: 0; color: var(--muted); font-size: 0.84rem; }
+		.rules {
+			margin: 0;
+			padding-left: 18px;
+			font-size: 0.82rem;
+			color: var(--muted);
+			line-height: 1.45;
+		}
 
-    .policy { font-size: 0.82rem; margin: 0; line-height: 1.4; }
-    .policy.ok { color: var(--ok); }
-    .policy.warn { color: var(--warn); }
-    .policy.err { color: var(--err); }
+		.policy { font-size: 0.82rem; margin: 0; line-height: 1.4; }
+		.policy.ok { color: var(--ok); }
+		.policy.warn { color: var(--warn); }
+		.policy.err { color: var(--err); }
 
-    .chips { display: flex; gap: 8px; flex-wrap: wrap; }
-    .chip {
-      border: 1px solid rgba(15, 41, 64, 0.2);
-      border-radius: 999px;
-      padding: 8px 12px;
-      background: #fff;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 0.84rem;
-    }
+		.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+		.chip {
+			border: 1px solid rgba(15, 41, 64, 0.2);
+			border-radius: 999px;
+			padding: 8px 12px;
+			background: #fff;
+			cursor: pointer;
+			font-weight: 600;
+			font-size: 0.84rem;
+		}
 
-    .chip.active {
-      background: #0d76d3;
-      color: #fff;
-      border-color: #0d76d3;
-    }
+		.chip.active {
+			background: #0d76d3;
+			color: #fff;
+			border-color: #0d76d3;
+		}
 
-    .cards {
-      display: grid;
-      gap: 10px;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
+		.cards {
+			display: grid;
+			gap: 10px;
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+		}
 
-    .card {
-      border: 1px solid rgba(15, 41, 64, 0.15);
-      border-radius: 12px;
-      background: #ffffff;
-      padding: 10px;
-    }
+		.card {
+			border: 1px solid rgba(15, 41, 64, 0.15);
+			border-radius: 12px;
+			background: #ffffff;
+			padding: 10px;
+		}
 
-    .card .k { font-size: 0.76rem; text-transform: uppercase; color: var(--muted); font-weight: 700; }
-    .card .v { font-size: 1.15rem; font-weight: 700; margin-top: 6px; }
+		.card .k { font-size: 0.76rem; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+		.card .v { font-size: 1.15rem; font-weight: 700; margin-top: 6px; }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.82rem;
-      background: #fff;
-      border-radius: 12px;
-      overflow: hidden;
-    }
+		table {
+			width: 100%;
+			border-collapse: collapse;
+			font-size: 0.82rem;
+			background: #fff;
+			border-radius: 12px;
+			overflow: hidden;
+		}
 
-    th, td {
-      padding: 8px;
-      border-bottom: 1px solid #e2ebf2;
-      text-align: left;
-      vertical-align: top;
-    }
+		th, td {
+			padding: 8px;
+			border-bottom: 1px solid #e2ebf2;
+			text-align: left;
+			vertical-align: top;
+		}
 
-    th { background: #eff5fb; font-size: 0.75rem; text-transform: uppercase; color: #365572; }
+		th { background: #eff5fb; font-size: 0.75rem; text-transform: uppercase; color: #365572; }
 
-    .code {
-      min-height: 120px;
-      background: #0d2236;
-      color: #dbeaf9;
-      border-radius: 12px;
-      padding: 11px;
-      font-family: "JetBrains Mono", monospace;
-      font-size: 0.8rem;
-      line-height: 1.5;
-      overflow: auto;
-      white-space: pre-wrap;
-    }
+		.code {
+			min-height: 120px;
+			background: #0d2236;
+			color: #dbeaf9;
+			border-radius: 12px;
+			padding: 11px;
+			font-family: "JetBrains Mono", monospace;
+			font-size: 0.8rem;
+			line-height: 1.5;
+			overflow: auto;
+			white-space: pre-wrap;
+		}
 
-    @keyframes in {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
+		@keyframes in {
+			from { opacity: 0; transform: translateY(8px); }
+			to { opacity: 1; transform: translateY(0); }
+		}
 
-    @media (max-width: 1000px) {
-      .app { grid-template-columns: 1fr; }
-      .row, .row-3, .cards { grid-template-columns: 1fr; }
-    }
-  </style>
+		@media (max-width: 1000px) {
+			.app { grid-template-columns: 1fr; }
+			.row, .row-3, .cards { grid-template-columns: 1fr; }
+		}
+	</style>
 </head>
 <body>
-  <section class="panel" id="fbPanel" style="max-width:500px; margin:24px auto 0; display:none;">
-    <h2>Conectar com Facebook</h2>
-    <button id="fbLoginBtn" class="btn btn-primary" type="button">Entrar com Facebook</button>
-    <div id="fbStatus" class="status" style="margin-top:10px;"></div>
-    <div id="fbAccountsBox" style="margin-top:18px; display:none;">
-      <h3>Contas de Anúncio</h3>
-      <ul id="fbAccountsList" style="padding-left:18px;"></ul>
-    </div>
-  </section>
-  <section class="panel entry" id="entryScreen">
-    <div>
-      <span class="badge">Entrada Principal</span>
-      <h1>Acesso ao Sistema</h1>
-      <p class="subtitle">Crie a conta, entre com e-mail e senha, ou recupere a senha em uma tela separada.</p>
-    </div>
+	<section class="panel" id="fbPanel" style="max-width:500px; margin:24px auto 0; display:none;">
+		<h2>Conectar com Facebook</h2>
+		<button id="fbLoginBtn" class="btn btn-primary" type="button">Entrar com Facebook</button>
+		<div id="fbStatus" class="status" style="margin-top:10px;"></div>
+		<div id="fbAccountsBox" style="margin-top:18px; display:none;">
+			<h3>Contas de Anúncio</h3>
+			<ul id="fbAccountsList" style="padding-left:18px;"></ul>
+		</div>
+	</section>
+	<section class="panel entry" id="entryScreen">
+		<div>
+			<span class="badge">Entrada Principal</span>
+			<h1>Acesso ao Sistema</h1>
+			<p class="subtitle">Crie a conta, entre com e-mail e senha, ou recupere a senha em uma tela separada.</p>
+		</div>
 
-    <div id="entryStatus" class="status warn">Nao autenticado. Crie conta ou entre.</div>
-    <div id="entryNextStep" class="next-step">Proximo passo: clique em Criar conta, Entrar ou Recuperar senha.</div>
+		<div id="entryStatus" class="status warn">Nao autenticado. Crie conta ou entre.</div>
+		<div id="entryNextStep" class="next-step">Proximo passo: clique em Criar conta, Entrar ou Recuperar senha.</div>
 
-    <div class="actions">
-      <button id="showSignupBtn" class="btn btn-primary" type="button">Criar conta</button>
-      <button id="showLoginBtn" class="btn btn-soft" type="button">Entrar</button>
-      <button id="openRecoverBtn" class="btn btn-soft" type="button">Recuperar senha</button>
-      <button id="openPanelBtn" class="btn btn-soft" type="button" disabled>Abrir painel de metricas</button>
-    </div>
+		<div class="actions">
+			<button id="showSignupBtn" class="btn btn-primary" type="button">Criar conta</button>
+			<button id="showLoginBtn" class="btn btn-soft" type="button">Entrar</button>
+			<button id="openRecoverBtn" class="btn btn-soft" type="button">Recuperar senha</button>
+			<button id="openPanelBtn" class="btn btn-soft" type="button" disabled>Abrir painel de metricas</button>
+		</div>
 
-    <div id="signupCard" class="client-box hidden">
-      <label for="signupEmail">Criar conta com seguranca</label>
-      <input id="signupEmail" type="email" placeholder="seu-email@dominio.com" autocomplete="email" />
-      <input id="signupPassword" type="password" placeholder="Crie uma senha forte" autocomplete="new-password" />
-      <input id="signupConfirm" type="password" placeholder="Confirme a senha" autocomplete="new-password" />
-      <ul class="rules">
-        <li>Minimo de 12 caracteres</li>
-        <li>Pelo menos 1 letra maiuscula</li>
-        <li>Pelo menos 1 letra minuscula</li>
-        <li>Pelo menos 1 numero</li>
-        <li>Pelo menos 1 simbolo</li>
-        <li>Sem espacos</li>
-      </ul>
-      <p id="signupPolicy" class="policy warn">Senha deve ter 12+ caracteres, maiuscula, minuscula, numero e simbolo.</p>
-      <div class="actions">
-        <button id="doSignupBtn" class="btn btn-primary" type="button">Criar conta agora</button>
-        <button id="cancelSignupBtn" class="btn btn-soft" type="button">Fechar</button>
-      </div>
-    </div>
+		<div id="signupCard" class="client-box hidden">
+			<label for="signupEmail">Criar conta com seguranca</label>
+			<input id="signupEmail" type="email" placeholder="seu-email@dominio.com" autocomplete="email" />
+			<input id="signupPassword" type="password" placeholder="Crie uma senha forte" autocomplete="new-password" />
+			<input id="signupConfirm" type="password" placeholder="Confirme a senha" autocomplete="new-password" />
+			<ul class="rules">
+				<li>Minimo de 12 caracteres</li>
+				<li>Pelo menos 1 letra maiuscula</li>
+				<li>Pelo menos 1 letra minuscula</li>
+				<li>Pelo menos 1 numero</li>
+				<li>Pelo menos 1 simbolo</li>
+				<li>Sem espacos</li>
+			</ul>
+			<p id="signupPolicy" class="policy warn">Senha deve ter 12+ caracteres, maiuscula, minuscula, numero e simbolo.</p>
+			<div class="actions">
+				<button id="doSignupBtn" class="btn btn-primary" type="button">Criar conta agora</button>
+				<button id="cancelSignupBtn" class="btn btn-soft" type="button">Fechar</button>
+			</div>
+		</div>
 
-    <div id="loginCard" class="client-box hidden">
-      <label for="loginEmail">Entrar na conta</label>
-      <input id="loginEmail" type="email" placeholder="seu-email@dominio.com" autocomplete="email" />
-      <input id="loginPassword" type="password" placeholder="Digite sua senha" autocomplete="current-password" />
-      <p class="hint">Se o login falhar, use Recuperar senha na entrada principal.</p>
-      <div class="actions">
-        <button id="doLoginBtn" class="btn btn-primary" type="button">Entrar agora</button>
-        <button id="cancelLoginBtn" class="btn btn-soft" type="button">Fechar</button>
-      </div>
-    </div>
-  </section>
+		<div id="loginCard" class="client-box hidden">
+			<label for="loginEmail">Entrar na conta</label>
+			<input id="loginEmail" type="email" placeholder="seu-email@dominio.com" autocomplete="email" />
+			<input id="loginPassword" type="password" placeholder="Digite sua senha" autocomplete="current-password" />
+			<p class="hint">Se o login falhar, use Recuperar senha na entrada principal.</p>
+			<div class="actions">
+				<button id="doLoginBtn" class="btn btn-primary" type="button">Entrar agora</button>
+				<button id="cancelLoginBtn" class="btn btn-soft" type="button">Fechar</button>
+			</div>
+		</div>
+	</section>
 
-  <section class="panel recover hidden" id="recoverScreen">
-    <div>
-      <span class="badge">Seguranca</span>
-      <h1>Recuperar Senha</h1>
-      <p class="subtitle">Abra esta segunda tela, informe o e-mail e receba um link seguro para redefinir a senha.</p>
-    </div>
-    <div class="client-box">
-      <label for="recoverEmail">E-mail da conta</label>
-      <input id="recoverEmail" type="email" placeholder="seu-email@dominio.com" autocomplete="email" />
-      <div class="actions">
-        <button id="doRecoverBtn" class="btn btn-primary" type="button">Enviar link de recuperacao</button>
-        <button id="backToEntryBtn" class="btn btn-soft" type="button">Voltar para entrada</button>
-      </div>
-    </div>
-  </section>
+	<section class="panel recover hidden" id="recoverScreen">
+		<div>
+			<span class="badge">Seguranca</span>
+			<h1>Recuperar Senha</h1>
+			<p class="subtitle">Abra esta segunda tela, informe o e-mail e receba um link seguro para redefinir a senha.</p>
+		</div>
+		<div class="client-box">
+			<label for="recoverEmail">E-mail da conta</label>
+			<input id="recoverEmail" type="email" placeholder="seu-email@dominio.com" autocomplete="email" />
+			<div class="actions">
+				<button id="doRecoverBtn" class="btn btn-primary" type="button">Enviar link de recuperacao</button>
+				<button id="backToEntryBtn" class="btn btn-soft" type="button">Voltar para entrada</button>
+			</div>
+		</div>
+	</section>
 
-  <section class="panel reset hidden" id="resetScreen">
-    <div>
-      <span class="badge">Redefinicao</span>
-      <h1>Definir Nova Senha</h1>
-      <p class="subtitle">Use uma senha forte para concluir a recuperacao da conta.</p>
-    </div>
-    <div class="client-box">
-      <label for="resetPassword">Nova senha</label>
-      <input id="resetPassword" type="password" placeholder="Nova senha forte" autocomplete="new-password" />
-      <input id="resetConfirm" type="password" placeholder="Confirme a nova senha" autocomplete="new-password" />
-      <ul class="rules">
-        <li>Minimo de 12 caracteres</li>
-        <li>Pelo menos 1 letra maiuscula</li>
-        <li>Pelo menos 1 letra minuscula</li>
-        <li>Pelo menos 1 numero</li>
-        <li>Pelo menos 1 simbolo</li>
-        <li>Sem espacos</li>
-      </ul>
-      <p id="resetPolicy" class="policy warn">Senha deve ter 12+ caracteres, maiuscula, minuscula, numero e simbolo.</p>
-      <div class="actions">
-        <button id="doResetBtn" class="btn btn-primary" type="button">Salvar nova senha</button>
-        <button id="backToEntryFromResetBtn" class="btn btn-soft" type="button">Voltar para entrada</button>
-      </div>
-    </div>
-  </section>
+	<section class="panel reset hidden" id="resetScreen">
+		<div>
+			<span class="badge">Redefinicao</span>
+			<h1>Definir Nova Senha</h1>
+			<p class="subtitle">Use uma senha forte para concluir a recuperacao da conta.</p>
+		</div>
+		<div class="client-box">
+			<label for="resetPassword">Nova senha</label>
+			<input id="resetPassword" type="password" placeholder="Nova senha forte" autocomplete="new-password" />
+			<input id="resetConfirm" type="password" placeholder="Confirme a nova senha" autocomplete="new-password" />
+			<ul class="rules">
+				<li>Minimo de 12 caracteres</li>
+				<li>Pelo menos 1 letra maiuscula</li>
+				<li>Pelo menos 1 letra minuscula</li>
+				<li>Pelo menos 1 numero</li>
+				<li>Pelo menos 1 simbolo</li>
+				<li>Sem espacos</li>
+			</ul>
+			<p id="resetPolicy" class="policy warn">Senha deve ter 12+ caracteres, maiuscula, minuscula, numero e simbolo.</p>
+			<div class="actions">
+				<button id="doResetBtn" class="btn btn-primary" type="button">Salvar nova senha</button>
+				<button id="backToEntryFromResetBtn" class="btn btn-soft" type="button">Voltar para entrada</button>
+			</div>
+		</div>
+	</section>
 
-  <main class="app hidden" id="metricsApp">
-    <section class="panel left">
-      <div>
-        <span class="badge">Meta Business + IA</span>
-        <h1>Painel de Metricas por Cliente</h1>
-        <p class="subtitle">Ambiente isolado por usuario, com token criptografado e clientes separados por conta.</p>
-      </div>
+	<main class="app hidden" id="metricsApp">
+		<section class="panel left">
+			<div>
+				<span class="badge">Meta Business + IA</span>
+				<h1>Painel de Metricas por Cliente</h1>
+				<p class="subtitle">Ambiente isolado por usuario, com token criptografado e clientes separados por conta.</p>
+			</div>
 
-      <div class="client-box">
-        <div id="authStatus" class="status warn">Conta nao autenticada.</div>
-        <div class="actions">
-          <button id="logoutBtn" class="btn btn-soft" type="button">Sair</button>
-        </div>
-      </div>
+			<div class="client-box">
+				<div id="authStatus" class="status warn">Conta nao autenticada.</div>
+				<div class="actions">
+					<button id="logoutBtn" class="btn btn-soft" type="button">Sair</button>
+				</div>
+			</div>
 
-      <div class="client-box">
-        <div id="tokenStatus" class="status warn">Token Meta nao configurado.</div>
-        <div class="row" style="margin-top:10px">
-          <div class="field">
-            <label for="metaToken">Token Meta Business</label>
-            <input id="metaToken" type="password" placeholder="Cole o token EAA..." autocomplete="off" />
-          </div>
-          <div class="field" style="align-content:end;">
-            <div class="actions">
-              <button id="saveTokenBtn" class="btn btn-primary" type="button">Salvar token</button>
-              <button id="deleteTokenBtn" class="btn btn-soft" type="button">Remover token</button>
-            </div>
-          </div>
-        </div>
-      </div>
+			<div class="client-box">
+				<div id="tokenStatus" class="status warn">Token Meta nao configurado.</div>
+				<div class="row" style="margin-top:10px">
+					<div class="field">
+						<label for="metaToken">Token Meta Business</label>
+						<input id="metaToken" type="password" placeholder="Cole o token EAA..." autocomplete="off" />
+					</div>
+					<div class="field" style="align-content:end;">
+						<div class="actions">
+							<button id="saveTokenBtn" class="btn btn-primary" type="button">Salvar token</button>
+							<button id="deleteTokenBtn" class="btn btn-soft" type="button">Remover token</button>
+						</div>
+					</div>
+				</div>
+			</div>
 
-      <div class="client-box">
-        <div class="field">
-          <label for="availableAccountSelect">Conta vinculada ao token</label>
-          <select id="availableAccountSelect"><option value="">Selecione...</option></select>
-          <p class="hint">Ao selecionar uma conta, o ID e a versao da API sao preenchidos automaticamente.</p>
-        </div>
-      </div>
+			<div class="client-box">
+				<div class="field">
+					<label for="availableAccountSelect">Conta vinculada ao token</label>
+					<select id="availableAccountSelect"><option value="">Selecione...</option></select>
+					<p class="hint">Ao selecionar uma conta, o ID e a versao da API sao preenchidos automaticamente.</p>
+				</div>
+			</div>
 
-      <div class="client-box">
-        <div class="field">
-          <label for="clientSelect">Cliente ativo (salvo)</label>
-          <select id="clientSelect"><option value="">Selecione...</option></select>
-          <p class="hint">Somente clientes salvos podem consultar metricas.</p>
-        </div>
-        <div class="row-3">
-          <div class="field">
-            <label for="clientName">Nome do cliente</label>
-            <input id="clientName" type="text" placeholder="Ex.: Clinica Alfa" />
-          </div>
-          <div class="field">
-            <label for="adAccountId">ID conta de anuncio</label>
-            <input id="adAccountId" type="text" placeholder="123456789012345" />
-          </div>
-          <div class="field">
-            <label for="apiVersion">Versao API</label>
-            <input id="apiVersion" type="text" value="v25.0" placeholder="v25.0" />
-          </div>
-        </div>
-        <div class="actions">
-          <button id="saveClientBtn" class="btn btn-soft" type="button">Salvar cliente</button>
-          <button id="removeClientBtn" class="btn btn-soft" type="button">Remover cliente</button>
-        </div>
-      </div>
+			<div class="client-box">
+				<div class="field">
+					<label for="clientSelect">Cliente ativo (salvo)</label>
+					<select id="clientSelect"><option value="">Selecione...</option></select>
+					<p class="hint">Somente clientes salvos podem consultar metricas.</p>
+				</div>
+				<div class="row-3">
+					<div class="field">
+						<label for="clientName">Nome do cliente</label>
+						<input id="clientName" type="text" placeholder="Ex.: Clinica Alfa" />
+					</div>
+					<div class="field">
+						<label for="adAccountId">ID conta de anuncio</label>
+						<input id="adAccountId" type="text" placeholder="123456789012345" />
+					</div>
+					<div class="field">
+						<label for="apiVersion">Versao API</label>
+						<input id="apiVersion" type="text" value="v25.0" placeholder="v25.0" />
+					</div>
+				</div>
+				<div class="actions">
+					<button id="saveClientBtn" class="btn btn-soft" type="button">Salvar cliente</button>
+					<button id="removeClientBtn" class="btn btn-soft" type="button">Remover cliente</button>
+				</div>
+			</div>
 
-      <div class="field" style="margin-bottom:18px;">
-        <div style="display:flex; gap:12px; align-items:end;">
-          <div style="flex:1;">
-            <label for="reportTab">Relatórios</label>
-            <select id="reportTab" style="width:100%;">
-              <option value="custom">Personalizado</option>
-              <option value="1d">Último dia</option>
-              <option value="15d">Últimos 15 dias</option>
-              <option value="30d">Últimos 30 dias</option>
-            </select>
-          </div>
-          <div id="customDateBox" style="flex:2; display:flex; gap:8px; align-items:center;">
-            <input id="dateStart" type="date" style="width:48%" />
-            <span style="font-size:1.2em;">a</span>
-            <input id="dateEnd" type="date" style="width:48%" />
-          </div>
-          <div style="flex:1;">
-            <label for="reportType">Tipo</label>
-            <select id="reportType" style="width:100%;">
-              <option value="basico">Básico</option>
-              <option value="completo">Completo</option>
-              <option value="detalhado">Detalhado</option>
-            </select>
-          </div>
-        </div>
-        <p class="hint">Escolha um período rápido ou defina as datas manualmente.</p>
-      </div>
+			<div class="field" style="margin-bottom:18px;">
+				<div style="display:flex; gap:12px; align-items:end;">
+					<div style="flex:1;">
+						<label for="reportTab">Relatórios</label>
+						<select id="reportTab" style="width:100%;">
+							<option value="custom">Personalizado</option>
+							<option value="1d">Último dia</option>
+							<option value="15d">Últimos 15 dias</option>
+							<option value="30d">Últimos 30 dias</option>
+						</select>
+					</div>
+					<div id="customDateBox" style="flex:2; display:flex; gap:8px; align-items:center;">
+						<input id="dateStart" type="date" style="width:48%" />
+						<span style="font-size:1.2em;">a</span>
+						<input id="dateEnd" type="date" style="width:48%" />
+					</div>
+					<div style="flex:1;">
+						<label for="reportType">Tipo</label>
+						<select id="reportType" style="width:100%;">
+							<option value="basico">Básico</option>
+							<option value="completo">Completo</option>
+							<option value="detalhado">Detalhado</option>
+						</select>
+					</div>
+				</div>
+				<p class="hint">Escolha um período rápido ou defina as datas manualmente.</p>
+			</div>
 
-      <div class="actions">
-        <button id="loadMetricsBtn" class="btn btn-primary" type="button">Atualizar metricas</button>
-        <button id="loadAdviceBtn" class="btn btn-soft" type="button">Gerar dicas da IA</button>
-      </div>
+			<div class="actions">
+				<button id="loadMetricsBtn" class="btn btn-primary" type="button">Atualizar metricas</button>
+				<button id="loadAdviceBtn" class="btn btn-soft" type="button">Gerar dicas da IA</button>
+			</div>
 
-      <p class="hint">Fluxo recomendado: salvar token Meta, cadastrar cliente, atualizar metricas e depois gerar dicas.</p>
-    </section>
+			<p class="hint">Fluxo recomendado: salvar token Meta, cadastrar cliente, atualizar metricas e depois gerar dicas.</p>
+		</section>
 
-    <section class="panel right">
-      <div id="status" class="status">Pronto para consultar.</div>
-      <div id="mainNextStep" class="next-step">Proximo passo: autentique-se para liberar o painel.</div>
+		<section class="panel right">
+			<div id="status" class="status">Pronto para consultar.</div>
+			<div id="mainNextStep" class="next-step">Proximo passo: autentique-se para liberar o painel.</div>
 
-      <div class="cards">
-        <div class="card"><div class="k">Gasto</div><div class="v" id="kSpend">R$ 0,00</div></div>
-        <div class="card"><div class="k">Cliques</div><div class="v" id="kClicks">0</div></div>
-        <div class="card"><div class="k">Leads</div><div class="v" id="kLeads">0</div></div>
-        <div class="card"><div class="k">CTR</div><div class="v" id="kCtr">0,00%</div></div>
-        <div class="card"><div class="k">CPC</div><div class="v" id="kCpc">R$ 0,00</div></div>
-        <div class="card"><div class="k">CPL</div><div class="v" id="kCpl">R$ 0,00</div></div>
-      </div>
+			<div class="cards">
+				<div class="card"><div class="k">Gasto</div><div class="v" id="kSpend">R$ 0,00</div></div>
+				<div class="card"><div class="k">Cliques</div><div class="v" id="kClicks">0</div></div>
+				<div class="card"><div class="k">Leads</div><div class="v" id="kLeads">0</div></div>
+				<div class="card"><div class="k">CTR</div><div class="v" id="kCtr">0,00%</div></div>
+				<div class="card"><div class="k">CPC</div><div class="v" id="kCpc">R$ 0,00</div></div>
+				<div class="card"><div class="k">CPL</div><div class="v" id="kCpl">R$ 0,00</div></div>
+				<div class="card"><div class="k">Público atingido</div><div class="v" id="kReach">0</div></div>
+				<div class="card"><div class="k">Impressões</div><div class="v" id="kImpressions">0</div></div>
+				<div class="card"><div class="k">Frequência</div><div class="v" id="kFrequency">0,00</div></div>
+				<div class="card"><div class="k">Resultado principal</div><div class="v" id="kResults">0</div></div>
+				<div class="card"><div class="k">Tipo de resultado</div><div class="v" id="kResultType">-</div></div>
+				<div class="card"><div class="k">Investimento diário</div><div class="v" id="kDailySpend">R$ 0,00</div></div>
+			</div>
 
-      <div class="field">
-        <label>Tabela resumida</label>
-        <div style="overflow:auto; max-height: 260px; border: 1px solid #d9e5ef; border-radius: 12px;">
-          <table>
-            <thead>
-              <tr>
-                <th>Campanha</th>
-                <th>Conjunto</th>
-                <th>Anúncio</th>
-                <th>Tipo</th>
-                <th>Público</th>
-                <th>Impressões</th>
-                <th>Gasto</th>
-                <th>Cliques</th>
-                <th>CTR</th>
-                <th>CPC</th>
-                <th>CPM</th>
-                <th>Frequência</th>
-                <th>Resultado</th>
-              </tr>
-            </thead>
-            <tbody id="tableBody">
-              <tr><td colspan="13">Sem dados ainda.</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+			<div class="field">
+				<label>Objetivo estratégico das campanhas</label>
+				<div id="objectiveSummary" style="border:1px solid #d9e5ef; border-radius:12px; padding:10px 12px; background:#f8fbff; font-size:0.93rem;">Carregue as métricas para gerar o resumo estratégico.</div>
+			</div>
+
+			<div class="field">
+				<label>Distribuição do investimento por etapa</label>
+				<div id="stageDistribution" style="border:1px solid #d9e5ef; border-radius:12px; padding:10px 12px; background:#fff;">
+					<div id="stageBars" style="display:flex; flex-direction:column; gap:10px;"></div>
+				</div>
+			</div>
+
+			<div class="field">
+				<label>Top 6 melhores anúncios por resultado</label>
+				<div style="overflow:auto; max-height: 160px; border: 1px solid #d9e5ef; border-radius: 12px; background:#f8fbff;">
+					<ol id="topAdsList" style="margin:0; padding:8px 12px 8px 26px; font-size:0.9rem;"></ol>
+				</div>
+			</div>
+
+			<div class="field">
+				<label>Tabela detalhada (campanha, conjunto e anúncio)</label>
+				<div style="overflow:auto; max-height: 260px; border: 1px solid #d9e5ef; border-radius: 12px;">
+					<table>
+						<thead>
+							<tr>
+								<th>Campanha</th>
+								<th>Conjunto</th>
+								<th>Anúncio</th>
+								<th>Tipo</th>
+								<th>Público</th>
+								<th>Impressões</th>
+								<th>Gasto</th>
+								<th>Cliques</th>
+								<th>CTR</th>
+								<th>CPC</th>
+								<th>CPM</th>
+								<th>Frequência</th>
+								<th>Resultado</th>
+							</tr>
+						</thead>
+						<tbody id="tableBody">
+							<tr><td colspan="13">Sem dados ainda.</td></tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
 
 
-      <div class="field">
-        <label>Assistente de métricas (Claude)</label>
-        <div id="adviceBox">
-          <pre class="code" id="advice">As dicas aparecerao aqui.</pre>
-          <div id="adviceActions" style="margin-top:8px; display:flex; gap:8px;">
-            <button id="adviceUsefulBtn" class="btn btn-soft" type="button">Útil</button>
-            <button id="adviceNotUsefulBtn" class="btn btn-soft" type="button">Não útil</button>
-            <button id="adviceRefreshBtn" class="btn btn-soft" type="button">Nova sugestão</button>
-          </div>
-          <div style="margin-top:10px;">
-            <label for="adviceQuestion">Pergunte algo para a IA:</label>
-            <input id="adviceQuestion" type="text" placeholder="Ex: Como melhorar o CTR?" style="width:70%;margin-right:8px;" />
-            <button id="adviceAskBtn" class="btn btn-primary" type="button">Perguntar</button>
-          </div>
-        </div>
-      </div>
+			<div class="field">
+				<label>Assistente de métricas (Claude)</label>
+				<div id="adviceBox">
+					<pre class="code" id="advice">As dicas aparecerao aqui.</pre>
+					<div id="adviceActions" style="margin-top:8px; display:flex; gap:8px;">
+						<button id="adviceUsefulBtn" class="btn btn-soft" type="button">Útil</button>
+						<button id="adviceNotUsefulBtn" class="btn btn-soft" type="button">Não útil</button>
+						<button id="adviceRefreshBtn" class="btn btn-soft" type="button">Nova sugestão</button>
+					</div>
+					<div style="margin-top:10px;">
+						<label for="adviceQuestion">Pergunte algo para a IA:</label>
+						<input id="adviceQuestion" type="text" placeholder="Ex: Como melhorar o CTR?" style="width:70%;margin-right:8px;" />
+						<button id="adviceAskBtn" class="btn btn-primary" type="button">Perguntar</button>
+					</div>
+				</div>
+			</div>
 
-      <div class="field">
-        <label>Resposta técnica</label>
-        <pre class="code" id="rawOutput">Sem requisicao executada.</pre>
-      </div>
+			<div class="field">
+				<label>Resposta técnica</label>
+				<pre class="code" id="rawOutput">Sem requisicao executada.</pre>
+			</div>
 
-      <div class="field">
-        <label>Histórico de métricas</label>
-        <div style="overflow:auto; max-height: 120px; border: 1px solid #d9e5ef; border-radius: 12px; background:#f8fbff;">
-          <ul id="metricsHistory" style="margin:0; padding:8px 12px; list-style:decimal inside; font-size:0.85rem;"></ul>
-        </div>
-      </div>
-    </section>
-  </main>
+			<div class="field">
+				<label>Histórico de métricas</label>
+				<div style="overflow:auto; max-height: 120px; border: 1px solid #d9e5ef; border-radius: 12px; background:#f8fbff;">
+					<ul id="metricsHistory" style="margin:0; padding:8px 12px; list-style:decimal inside; font-size:0.85rem;"></ul>
+				</div>
+			</div>
+		</section>
+	</main>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="/app.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+	<script src="/app.js"></script>
 </body>
 </html>

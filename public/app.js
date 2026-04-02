@@ -173,6 +173,15 @@ const kLeadsEl = document.getElementById("kLeads");
 const kCtrEl = document.getElementById("kCtr");
 const kCpcEl = document.getElementById("kCpc");
 const kCplEl = document.getElementById("kCpl");
+const kReachEl = document.getElementById("kReach");
+const kImpressionsEl = document.getElementById("kImpressions");
+const kFrequencyEl = document.getElementById("kFrequency");
+const kResultsEl = document.getElementById("kResults");
+const kResultTypeEl = document.getElementById("kResultType");
+const kDailySpendEl = document.getElementById("kDailySpend");
+const objectiveSummaryEl = document.getElementById("objectiveSummary");
+const stageBarsEl = document.getElementById("stageBars");
+const topAdsListEl = document.getElementById("topAdsList");
 
 function brMoney(value) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value || 0));
@@ -180,6 +189,139 @@ function brMoney(value) {
 
 function brInt(value) {
   return new Intl.NumberFormat("pt-BR").format(Number(value || 0));
+}
+
+function normalizeResultType(type) {
+  const t = String(type || "").toLowerCase();
+  if (t.includes("lead")) return "Lead";
+  if (t.includes("purchase")) return "Compra";
+  if (t.includes("message")) return "Mensagem";
+  if (t.includes("registration")) return "Cadastro";
+  if (t.includes("checkout")) return "Checkout";
+  if (t.includes("add_to_cart")) return "Carrinho";
+  if (t.includes("link_click")) return "Clique no link";
+  return type || "-";
+}
+
+function parseDateISO(value) {
+  if (!value) return null;
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function calcPeriodDays(dateStart, dateEnd) {
+  const start = parseDateISO(dateStart);
+  const end = parseDateISO(dateEnd);
+  if (!start || !end) return 1;
+  const diffMs = end.getTime() - start.getTime();
+  if (diffMs < 0) return 1;
+  return Math.max(1, Math.floor(diffMs / 86400000) + 1);
+}
+
+function detectFunnelStage(row) {
+  const text = [row.campaign_name, row.adset_name, row.ad_name]
+    .map((value) => String(value || "").toLowerCase())
+    .join(" ");
+
+  if (/(remarketing|retarget|remarket|reimpacto)/.test(text)) {
+    return { key: "etapa3", label: "Etapa 3 - remarketing" };
+  }
+  if (/(lead|cadastro|formulario|whatsapp|conversa|mensagem|contato)/.test(text)) {
+    return { key: "etapa2", label: "Etapa 2 - captura" };
+  }
+  return { key: "etapa1", label: "Etapa 1 - engajamento" };
+}
+
+function computeExecutiveMetrics(rows, summary, periodDays) {
+  const resultByType = {};
+  let totalResults = 0;
+
+  rows.forEach((row) => {
+    const type = row.result_type || "-";
+    const value = Number(row.results || row.leads || 0);
+    totalResults += value;
+    resultByType[type] = (resultByType[type] || 0) + value;
+  });
+
+  let dominantResultType = "-";
+  let dominantResultValue = 0;
+  Object.entries(resultByType).forEach(([type, value]) => {
+    if (value > dominantResultValue) {
+      dominantResultValue = value;
+      dominantResultType = type;
+    }
+  });
+
+  const reach = Number(summary.reach || 0);
+  const impressions = Number(summary.impressions || 0);
+  const frequency = reach > 0 ? impressions / reach : 0;
+  const dailySpend = Number(summary.spend || 0) / Math.max(1, periodDays);
+
+  return {
+    reach,
+    impressions,
+    frequency,
+    dailySpend,
+    totalResults,
+    dominantResultType,
+    dominantResultValue
+  };
+}
+
+function updateExecutiveBlocks(rows, summary, context = {}, dateStart, dateEnd) {
+  const periodDays = calcPeriodDays(dateStart || context.since, dateEnd || context.until);
+  const exec = computeExecutiveMetrics(rows, summary, periodDays);
+
+  kReachEl.textContent = brInt(exec.reach);
+  kImpressionsEl.textContent = brInt(exec.impressions);
+  kFrequencyEl.textContent = Number(exec.frequency).toFixed(2).replace(".", ",");
+  kResultsEl.textContent = brInt(exec.totalResults);
+  kResultTypeEl.textContent = normalizeResultType(exec.dominantResultType);
+  kDailySpendEl.textContent = brMoney(exec.dailySpend);
+
+  const objectiveText = `Período analisado: ${periodDays} dia(s). Foco principal em ${normalizeResultType(exec.dominantResultType)} com ${brInt(exec.dominantResultValue)} resultado(s). Público atingido: ${brInt(exec.reach)} e ${brInt(exec.impressions)} impressões.`;
+  objectiveSummaryEl.textContent = objectiveText;
+
+  const stageAgg = {
+    etapa1: { label: "Etapa 1 - engajamento", spend: 0, results: 0 },
+    etapa2: { label: "Etapa 2 - captura", spend: 0, results: 0 },
+    etapa3: { label: "Etapa 3 - remarketing", spend: 0, results: 0 }
+  };
+
+  rows.forEach((row) => {
+    const stage = detectFunnelStage(row);
+    stageAgg[stage.key].spend += Number(row.spend || 0);
+    stageAgg[stage.key].results += Number(row.results || row.leads || 0);
+  });
+
+  const totalSpend = Math.max(0.0001, Number(summary.spend || 0));
+  stageBarsEl.innerHTML = Object.values(stageAgg)
+    .map((item) => {
+      const pct = (item.spend / totalSpend) * 100;
+      return `
+        <div>
+          <div style="display:flex; justify-content:space-between; font-size:0.86rem; margin-bottom:4px;">
+            <span>${item.label}</span>
+            <span>${pct.toFixed(1).replace(".", ",")}% | Resultados: ${brInt(item.results)}</span>
+          </div>
+          <div style="width:100%; height:10px; background:#edf2f7; border-radius:999px; overflow:hidden;">
+            <div style="width:${Math.min(100, Math.max(0, pct))}%; height:100%; background:#0f6ea8;"></div>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+
+  const topAds = [...rows]
+    .filter((row) => row.ad_name && row.ad_name !== "-")
+    .sort((a, b) => Number(b.results || b.leads || 0) - Number(a.results || a.leads || 0) || Number(b.spend || 0) - Number(a.spend || 0))
+    .slice(0, 6);
+
+  topAdsListEl.innerHTML = topAds.length
+    ? topAds
+        .map((row) => `<li>${row.ad_name} - ${brInt(row.results || row.leads || 0)} (${normalizeResultType(row.result_type)})</li>`)
+        .join("")
+    : "<li>Sem anúncios detalhados no período. Selecione o tipo Detalhado para ranking de anúncios.</li>";
 }
 
 function setStatus(kind, message) {
@@ -582,6 +724,15 @@ function clearMetrics() {
   kCtrEl.textContent = "0,00%";
   kCpcEl.textContent = brMoney(0);
   kCplEl.textContent = brMoney(0);
+  kReachEl.textContent = brInt(0);
+  kImpressionsEl.textContent = brInt(0);
+  kFrequencyEl.textContent = "0,00";
+  kResultsEl.textContent = brInt(0);
+  kResultTypeEl.textContent = "-";
+  kDailySpendEl.textContent = brMoney(0);
+  objectiveSummaryEl.textContent = "Carregue as métricas para gerar o resumo estratégico.";
+  stageBarsEl.innerHTML = "";
+  topAdsListEl.innerHTML = "";
   tableBodyEl.innerHTML = '<tr><td colspan="13">Sem dados ainda.</td></tr>';
   adviceEl.textContent = "As dicas aparecerao aqui.";
   rawOutputEl.textContent = "Sem requisicao executada.";
@@ -670,6 +821,7 @@ async function loadMetrics() {
   }
   updateCards(result.data.summary || {});
   updateTable(result.data.rows || []);
+  updateExecutiveBlocks(result.data.rows || [], result.data.summary || {}, result.data.context || {}, dateStart, dateEnd);
   lastMetricsPayload = {
     clientName: selected.textContent.split(" - ")[0] || "Cliente",
     reportType: reportTypeEl.value,

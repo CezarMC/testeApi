@@ -477,10 +477,35 @@
 				<div class="card"><div class="k">CTR</div><div class="v" id="kCtr">0,00%</div></div>
 				<div class="card"><div class="k">CPC</div><div class="v" id="kCpc">R$ 0,00</div></div>
 				<div class="card"><div class="k">CPL</div><div class="v" id="kCpl">R$ 0,00</div></div>
+				<div class="card"><div class="k">Público atingido</div><div class="v" id="kReach">0</div></div>
+				<div class="card"><div class="k">Impressões</div><div class="v" id="kImpressions">0</div></div>
+				<div class="card"><div class="k">Frequência</div><div class="v" id="kFrequency">0,00</div></div>
+				<div class="card"><div class="k">Resultado principal</div><div class="v" id="kResults">0</div></div>
+				<div class="card"><div class="k">Tipo de resultado</div><div class="v" id="kResultType">-</div></div>
+				<div class="card"><div class="k">Investimento diário</div><div class="v" id="kDailySpend">R$ 0,00</div></div>
 			</div>
 
 			<div class="field">
-				<label>Tabela resumida</label>
+				<label>Objetivo estratégico das campanhas</label>
+				<div id="objectiveSummary" style="border:1px solid #d9e5ef; border-radius:12px; padding:10px 12px; background:#f8fbff; font-size:0.93rem;">Carregue as métricas para gerar o resumo estratégico.</div>
+			</div>
+
+			<div class="field">
+				<label>Distribuição do investimento por etapa</label>
+				<div id="stageDistribution" style="border:1px solid #d9e5ef; border-radius:12px; padding:10px 12px; background:#fff;">
+					<div id="stageBars" style="display:flex; flex-direction:column; gap:10px;"></div>
+				</div>
+			</div>
+
+			<div class="field">
+				<label>Top 6 melhores anúncios por resultado</label>
+				<div style="overflow:auto; max-height: 160px; border: 1px solid #d9e5ef; border-radius: 12px; background:#f8fbff;">
+					<ol id="topAdsList" style="margin:0; padding:8px 12px 8px 26px; font-size:0.9rem;"></ol>
+				</div>
+			</div>
+
+			<div class="field">
+				<label>Tabela detalhada (campanha, conjunto e anúncio)</label>
 				<div style="overflow:auto; max-height: 260px; border: 1px solid #d9e5ef; border-radius: 12px;">
 					<table>
 						<thead>
