@@ -1165,14 +1165,15 @@ function bindEvents() {
     };
   document.getElementById("showSignupBtn").addEventListener("click", () => {
     toggleAuthCard(signupCardEl, true);
-    toggleAuthCard(loginCardEl, false);
     setEntryNextStep("preencha e-mail, senha forte e confirme a conta.");
   });
-  document.getElementById("showLoginBtn").addEventListener("click", () => {
-    toggleAuthCard(loginCardEl, true);
-    toggleAuthCard(signupCardEl, false);
-    setEntryNextStep("digite e-mail e senha para entrar.");
-  });
+  const showLoginBtn = document.getElementById("showLoginBtn");
+  if (showLoginBtn) {
+    showLoginBtn.addEventListener("click", () => {
+      toggleAuthCard(loginCardEl, true);
+      setEntryNextStep("digite e-mail e senha para entrar.");
+    });
+  }
   document.getElementById("openRecoverBtn").addEventListener("click", () => {
     showOnly(recoverScreenEl);
     setEntryNextStep("informe o e-mail e envie o link de recuperacao.");
@@ -1182,7 +1183,8 @@ function bindEvents() {
     setEntryNextStep("clique em Criar conta, Entrar ou Recuperar senha.");
   });
   document.getElementById("cancelSignupBtn").addEventListener("click", () => toggleAuthCard(signupCardEl, false));
-  document.getElementById("cancelLoginBtn").addEventListener("click", () => toggleAuthCard(loginCardEl, false));
+  const cancelLoginBtn = document.getElementById("cancelLoginBtn");
+  if (cancelLoginBtn) cancelLoginBtn.addEventListener("click", () => toggleAuthCard(loginCardEl, false));
   document.getElementById("doSignupBtn").addEventListener("click", signUp);
   document.getElementById("doLoginBtn").addEventListener("click", signIn);
   document.getElementById("doRecoverBtn").addEventListener("click", sendRecoveryEmail);
