@@ -1034,11 +1034,20 @@ async function loadClients() {
 }
 
 function renderClients(clients) {
+  const uniqueClients = [];
+  const seenAccounts = new Set();
+  (clients || []).forEach((client) => {
+    const key = normalizeAccountId(client.adAccountId);
+    if (!key || seenAccounts.has(key)) return;
+    seenAccounts.add(key);
+    uniqueClients.push(client);
+  });
+
   const selected = clientSelectEl.value;
   const selectedMetricsClient = metricsClientSelectEl ? metricsClientSelectEl.value : "";
   clientSelectEl.innerHTML = "<option value=''>Selecione...</option>";
   if (metricsClientSelectEl) metricsClientSelectEl.innerHTML = "<option value=''>Selecione...</option>";
-  clients.forEach((client) => {
+  uniqueClients.forEach((client) => {
     const option = document.createElement("option");
     option.value = client.id;
     option.textContent = `${client.name} - act_${client.adAccountId}`;
@@ -1057,6 +1066,10 @@ function renderClients(clients) {
   }
 }
 
+function normalizeAccountId(value) {
+  return String(value || "").replace(/[^0-9]/g, "");
+}
+
 function getLinkedAccountPayload(option) {
   if (!option || !option.value) return null;
   const label = String(option.textContent || "");
@@ -1072,6 +1085,24 @@ async function ensureClientFromLinkedAccount(option, opts = {}) {
   const silent = Boolean(opts.silent);
   const linked = getLinkedAccountPayload(option);
   if (!linked || !linked.adAccountId) return false;
+
+  const linkedAccountNormalized = normalizeAccountId(linked.adAccountId);
+  const existingOption = Array.from(clientSelectEl.options || []).find((item) => {
+    if (!item || !item.value) return false;
+    return normalizeAccountId(item.dataset.account) === linkedAccountNormalized;
+  });
+  if (existingOption) {
+    clientSelectEl.value = existingOption.value;
+    if (metricsClientSelectEl) metricsClientSelectEl.value = existingOption.value;
+    clientNameEl.value = existingOption.textContent.split(" - ")[0] || "";
+    adAccountIdEl.value = existingOption.dataset.account || linked.adAccountId;
+    apiVersionEl.value = existingOption.dataset.apiVersion || linked.apiVersion;
+    if (!silent) {
+      setStatus("ok", "Conta ja estava adicionada na sua lista de clientes.");
+      setMainNextStep("cliente pronto. Agora clique em Atualizar metricas.");
+    }
+    return true;
+  }
 
   clientNameEl.value = linked.name;
   adAccountIdEl.value = linked.adAccountId;
