@@ -166,6 +166,8 @@ const resetPolicyEl = document.getElementById("resetPolicy");
 const openPanelBtnEl = document.getElementById("openPanelBtn");
 
 const metaTokenEl = document.getElementById("metaToken");
+const tokenToggleBtnEl = document.getElementById("tokenToggleBtn");
+const tokenFormEl = document.getElementById("tokenForm");
 const availableAccountSelectEl = document.getElementById("availableAccountSelect");
 const clientSelectEl = document.getElementById("clientSelect");
 const clientNameEl = document.getElementById("clientName");
@@ -985,10 +987,14 @@ async function checkTokenStatus() {
   if (result.data.configured) {
     setTokenStatus("ok", "Token Meta salvo com seguranca no servidor.");
     setMainNextStep("cadastre ou selecione um cliente e atualize as metricas.");
+    if (tokenFormEl) tokenFormEl.classList.add("hidden");
+    if (tokenToggleBtnEl) tokenToggleBtnEl.textContent = "Alterar";
     await loadAvailableAccounts();
   } else {
     setTokenStatus("warn", "Token Meta nao configurado.");
     setMainNextStep("cole seu token Meta e clique em Salvar token.");
+    if (tokenFormEl) tokenFormEl.classList.remove("hidden");
+    if (tokenToggleBtnEl) tokenToggleBtnEl.textContent = "Configurar";
     clearAvailableAccounts();
   }
 }
@@ -1561,6 +1567,7 @@ function bindEvents() {
   }
   document.getElementById("saveTokenBtn").addEventListener("click", saveMetaToken);
   document.getElementById("deleteTokenBtn").addEventListener("click", deleteMetaToken);
+  if (tokenToggleBtnEl) tokenToggleBtnEl.addEventListener("click", () => { if (tokenFormEl) tokenFormEl.classList.toggle("hidden"); });
   document.getElementById("saveClientBtn").addEventListener("click", saveClient);
   document.getElementById("removeClientBtn").addEventListener("click", removeClient);
   document.getElementById("loadMetricsBtn").addEventListener("click", loadMetrics);

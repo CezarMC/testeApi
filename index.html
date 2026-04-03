@@ -328,6 +328,23 @@
 			border: 1px solid #0a66d3;
 		}
 
+		.btn-sm {
+			min-height: 34px;
+			padding: 6px 12px;
+			font-size: 0.84rem;
+		}
+
+		.btn-chip {
+			min-height: 30px;
+			padding: 5px 14px;
+			font-size: 0.81rem;
+			font-weight: 600;
+			background: #eef4fb;
+			color: #2a5070;
+			border: 1px solid rgba(15, 41, 64, 0.16);
+			border-radius: 999px;
+		}
+
 		.entry #loginCard.login-quick {
 			width: min(100%, 560px);
 			max-width: 100%;
@@ -699,7 +716,6 @@
 					<h2 class="panel-brand-name">InsightFlow</h2>
 				</div>
 				<h1>Painel de Metricas por Cliente</h1>
-				<p class="subtitle">Ambiente isolado por usuario, com token criptografado e clientes separados por conta.</p>
 				</div>
 				<div class="panel-side">
 					<span class="badge panel-badge">Meta Business + IA</span>
@@ -722,16 +738,21 @@
 			</div>
 
 			<div class="client-box">
-				<div id="tokenStatus" class="status warn">Token Meta nao configurado.</div>
-				<div class="row" style="margin-top:10px">
-					<div class="field">
-						<label for="metaToken">Token Meta Business</label>
-						<input id="metaToken" type="password" placeholder="Cole o token EAA..." autocomplete="off" />
-					</div>
-					<div class="field" style="align-content:end;">
-						<div class="actions">
-							<button id="saveTokenBtn" class="btn btn-primary" type="button">Salvar token</button>
-							<button id="deleteTokenBtn" class="btn btn-soft" type="button">Remover token</button>
+				<div style="display:flex; align-items:center; gap:10px;">
+					<div id="tokenStatus" class="status warn" style="flex:1; margin:0;">Token Meta nao configurado.</div>
+					<button id="tokenToggleBtn" class="btn btn-soft btn-sm" type="button">Configurar</button>
+				</div>
+				<div id="tokenForm" class="hidden" style="margin-top:10px;">
+					<div class="row">
+						<div class="field">
+							<label for="metaToken">Token Meta Business</label>
+							<input id="metaToken" type="password" placeholder="Cole o token EAA..." autocomplete="off" />
+						</div>
+						<div class="field" style="align-content:end;">
+							<div class="actions">
+								<button id="saveTokenBtn" class="btn btn-primary" type="button">Salvar token</button>
+								<button id="deleteTokenBtn" class="btn btn-soft" type="button">Remover token</button>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -741,7 +762,6 @@
 				<div class="field">
 					<label for="availableAccountSelect">Conta vinculada ao token</label>
 					<select id="availableAccountSelect"><option value="">Selecione...</option></select>
-					<p class="hint">Ao selecionar uma conta, o cliente e ativado automaticamente e as métricas já podem ser consultadas.</p>
 				</div>
 			</div>
 
@@ -790,24 +810,21 @@
 						</select>
 					</div>
 				</div>
-				<div class="actions" style="margin-top:8px;">
-					<button id="dateQuick7" class="btn btn-soft" type="button">Últimos 7 dias</button>
-					<button id="dateQuick15" class="btn btn-soft" type="button">Últimos 15 dias</button>
-					<button id="dateQuick30" class="btn btn-soft" type="button">Últimos 30 dias</button>
-					<button id="dateQuickMonth" class="btn btn-soft" type="button">Mês atual</button>
+				<div class="chips" style="margin-top:8px; flex-wrap:wrap;">
+					<button id="dateQuick7" class="btn btn-chip" type="button">7 dias</button>
+					<button id="dateQuick15" class="btn btn-chip" type="button">15 dias</button>
+					<button id="dateQuick30" class="btn btn-chip" type="button">30 dias</button>
+					<button id="dateQuickMonth" class="btn btn-chip" type="button">Mês atual</button>
 				</div>
-				<p class="hint">Selecione data inicial e final (dia/mês/ano) ou use os atalhos rápidos.</p>
 			</div>
 
 			<div class="actions">
 				<button id="loadMetricsBtn" class="btn btn-primary" type="button">Atualizar metricas</button>
-				<button id="openMetricsScreenBtn" class="btn btn-soft" type="button">Tela de metricas</button>
-				<button id="clientViewBtn" class="btn btn-soft" type="button">Visão cliente</button>
-				<button id="exportPdfBtn" class="btn btn-soft" type="button">Exportar PDF executivo</button>
-				<button id="loadAdviceBtn" class="btn btn-soft" type="button">Gerar dicas da IA</button>
+				<button id="openMetricsScreenBtn" class="btn btn-soft btn-sm" type="button">Tela de metricas</button>
+				<button id="clientViewBtn" class="btn btn-soft btn-sm" type="button">Visão cliente</button>
+				<button id="exportPdfBtn" class="btn btn-soft btn-sm" type="button">Exportar PDF</button>
+				<button id="loadAdviceBtn" class="btn btn-soft btn-sm" type="button">Dicas IA</button>
 			</div>
-
-			<p class="hint">Fluxo recomendado: salvar token Meta, cadastrar cliente, atualizar metricas e depois gerar dicas.</p>
 		</section>
 
 		<section class="panel right" id="metricsScreen">
