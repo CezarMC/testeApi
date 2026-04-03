@@ -194,6 +194,26 @@
 			gap: 12px;
 		}
 
+		.panel-brand {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			flex-wrap: wrap;
+			margin-bottom: 6px;
+		}
+
+		.panel-brand-name {
+			margin: 0;
+			font-size: clamp(1.15rem, 2.1vw, 1.65rem);
+			line-height: 1.05;
+			font-weight: 700;
+			letter-spacing: -0.03em;
+			background: linear-gradient(120deg, #0e4f8a, #0b7dbc 55%, #31b2d6);
+			-webkit-background-clip: text;
+			background-clip: text;
+			color: transparent;
+		}
+
 		.panel-logout {
 			min-height: 30px;
 			padding: 6px 10px;
@@ -633,7 +653,10 @@
 		<section class="panel left" id="panelConfig">
 			<div class="panel-heading">
 				<div>
-				<span class="badge">Meta Business + IA</span>
+				<div class="panel-brand">
+					<h2 class="panel-brand-name">InsightFlow</h2>
+					<span class="badge">Meta Business + IA</span>
+				</div>
 				<h1>Painel de Metricas por Cliente</h1>
 				<p class="subtitle">Ambiente isolado por usuario, com token criptografado e clientes separados por conta.</p>
 				</div>
