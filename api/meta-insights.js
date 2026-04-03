@@ -21,6 +21,11 @@ function safeNumber(value) {
   return Math.max(0, toNumber(value));
 }
 
+function sanitizeActionType(value, fallback = "lead") {
+  const type = String(value || "").trim().toLowerCase();
+  return /^[a-z0-9_.]+$/.test(type) ? type : fallback;
+}
+
 function sumAction(actions, type) {
   if (!Array.isArray(actions)) return 0;
   const found = actions.find((item) => item.action_type === type);
@@ -98,6 +103,48 @@ function mergeActionTotals(base, extra) {
   Object.entries(extra || {}).forEach(([key, value]) => {
     base[key] = (base[key] || 0) + safeNumber(value);
   });
+}
+
+function sumActionTotals(actionTotals = {}, types = []) {
+  return types.reduce((acc, type) => acc + safeNumber(actionTotals[type]), 0);
+}
+
+function buildAdvancedFromTotals(actionTotals = {}, uniqueActionTotals = {}, spend = 0, impressions = 0, clicks = 0, leads = 0, focusType = "lead") {
+  const linkClicks = sumActionTotals(actionTotals, ["link_click", "inline_link_click"]);
+  const outboundClicks = sumActionTotals(actionTotals, ["outbound_click"]);
+  const uniqueLinkClicks = sumActionTotals(uniqueActionTotals, ["link_click", "inline_link_click"]);
+  const msg7d = sumActionTotals(actionTotals, ["onsite_conversion.messaging_conversation_started_7d"]);
+  const msgFirstReply = sumActionTotals(actionTotals, ["onsite_conversion.messaging_first_reply"]);
+  const contactTotal = sumActionTotals(actionTotals, ["onsite_conversion.contact_total"]);
+  const purchase = sumActionTotals(actionTotals, ["purchase", "offsite_conversion.fb_pixel_purchase"]);
+  const initiateCheckout = sumActionTotals(actionTotals, ["initiate_checkout"]);
+  const addToCart = sumActionTotals(actionTotals, ["add_to_cart"]);
+  const completeRegistration = sumActionTotals(actionTotals, ["complete_registration"]);
+  const postEngagement = sumActionTotals(actionTotals, ["post_engagement", "post_reaction", "comment", "post", "post_saved"]);
+  const videoViews = sumActionTotals(actionTotals, ["video_view", "thruplay"]);
+  const focusResults = safeNumber(actionTotals[focusType]);
+
+  return {
+    link_clicks: linkClicks,
+    outbound_clicks: outboundClicks,
+    unique_link_clicks: uniqueLinkClicks,
+    messaging_conversation_started_7d: msg7d,
+    messaging_first_reply: msgFirstReply,
+    contact_total: contactTotal,
+    purchase,
+    initiate_checkout: initiateCheckout,
+    add_to_cart: addToCart,
+    complete_registration: completeRegistration,
+    post_engagement: postEngagement,
+    video_views: videoViews,
+    link_ctr: impressions > 0 ? (linkClicks / impressions) * 100 : 0,
+    outbound_ctr: impressions > 0 ? (outboundClicks / impressions) * 100 : 0,
+    link_cpc: linkClicks > 0 ? spend / linkClicks : 0,
+    click_to_lead_rate: clicks > 0 ? (leads / clicks) * 100 : 0,
+    focus_action_type: focusType,
+    focus_results: focusResults,
+    focus_cost: focusResults > 0 ? spend / focusResults : 0
+  };
 }
 
 function calcRowMetrics(row) {
@@ -212,6 +259,7 @@ module.exports = async function handler(request, response) {
 
   const apiVersion = String(body.apiVersion || "v25.0").trim();
   const reportType = String(body.reportType || "basico").trim().toLowerCase();
+  const agencyMetricFocus = sanitizeActionType(body.agencyMetricFocus || "lead", "lead");
   const adAccountId = String(body.adAccountId || "").trim().replace(/^act_/, "");
 
   if (!/^v\d+\.\d+$/.test(apiVersion)) {
@@ -253,9 +301,9 @@ module.exports = async function handler(request, response) {
 
   const levelByType = { basico: "campaign", completo: "adset", detalhado: "ad" };
   const fieldsByType = {
-    basico: ["campaign_id", "campaign_name", "impressions", "reach", "clicks", "spend", "cpc", "ctr", "cpm", "frequency", "actions"],
-    completo: ["campaign_id", "campaign_name", "adset_id", "adset_name", "impressions", "reach", "clicks", "spend", "cpc", "ctr", "cpm", "frequency", "actions"],
-    detalhado: ["campaign_id", "campaign_name", "adset_id", "adset_name", "ad_id", "ad_name", "impressions", "reach", "clicks", "spend", "cpc", "ctr", "cpm", "frequency", "actions"]
+    basico: ["campaign_id", "campaign_name", "impressions", "reach", "clicks", "spend", "cpc", "ctr", "cpm", "frequency", "actions", "unique_actions", "purchase_roas"],
+    completo: ["campaign_id", "campaign_name", "adset_id", "adset_name", "impressions", "reach", "clicks", "spend", "cpc", "ctr", "cpm", "frequency", "actions", "unique_actions", "purchase_roas"],
+    detalhado: ["campaign_id", "campaign_name", "adset_id", "adset_name", "ad_id", "ad_name", "impressions", "reach", "clicks", "spend", "cpc", "ctr", "cpm", "frequency", "actions", "unique_actions", "purchase_roas"]
   };
 
   const level = levelByType[reportType] || "campaign";
@@ -283,12 +331,28 @@ module.exports = async function handler(request, response) {
     const normalizedRows = rows.map((row) => {
       const metrics = calcRowMetrics(row);
       const actionTotals = aggregateActions(row.actions);
+      const uniqueActionTotals = aggregateActions(row.unique_actions);
       const primaryResult = getPrimaryResultFromTotals(actionTotals);
+      const advanced = buildAdvancedFromTotals(
+        actionTotals,
+        uniqueActionTotals,
+        metrics.spend,
+        metrics.impressions,
+        metrics.clicks,
+        metrics.leads,
+        agencyMetricFocus
+      );
+      const purchaseRoas = Array.isArray(row.purchase_roas)
+        ? row.purchase_roas.reduce((acc, item) => acc + safeNumber(item && item.value), 0)
+        : 0;
       return {
         raw: row,
         metrics,
         actionTotals,
-        primaryResult
+        uniqueActionTotals,
+        primaryResult,
+        advanced,
+        purchaseRoas
       };
     });
 
@@ -300,9 +364,11 @@ module.exports = async function handler(request, response) {
         acc.clicks += row.metrics.clicks;
         acc.leads += row.metrics.leads;
         mergeActionTotals(acc.actionTotals, row.actionTotals);
+        mergeActionTotals(acc.uniqueActionTotals, row.uniqueActionTotals);
+        acc.purchaseRoas += row.purchaseRoas;
         return acc;
       },
-      { spend: 0, impressions: 0, reach: 0, clicks: 0, leads: 0, actionTotals: {} }
+      { spend: 0, impressions: 0, reach: 0, clicks: 0, leads: 0, actionTotals: {}, uniqueActionTotals: {}, purchaseRoas: 0 }
     );
 
     summary.ctr = summary.impressions > 0 ? (summary.clicks / summary.impressions) * 100 : 0;
@@ -311,8 +377,22 @@ module.exports = async function handler(request, response) {
     summary.frequency = summary.reach > 0 ? summary.impressions / summary.reach : 0;
     summary.cpl = summary.leads > 0 ? summary.spend / summary.leads : 0;
     const primarySummaryResult = getPrimaryResultFromTotals(summary.actionTotals);
-    summary.result_type = primarySummaryResult.type;
-    summary.total_results = primarySummaryResult.value;
+    const focusResults = safeNumber(summary.actionTotals[agencyMetricFocus]);
+    summary.result_type = focusResults > 0 ? agencyMetricFocus : primarySummaryResult.type;
+    summary.total_results = focusResults > 0 ? focusResults : primarySummaryResult.value;
+    summary.focus_action_type = agencyMetricFocus;
+    summary.focus_results = focusResults;
+    summary.focus_cost = focusResults > 0 ? summary.spend / focusResults : 0;
+    summary.advanced = buildAdvancedFromTotals(
+      summary.actionTotals,
+      summary.uniqueActionTotals,
+      summary.spend,
+      summary.impressions,
+      summary.clicks,
+      summary.leads,
+      agencyMetricFocus
+    );
+    summary.advanced.purchase_roas = normalizedRows.length > 0 ? summary.purchaseRoas / normalizedRows.length : 0;
 
     const adMediaMap = level === "ad"
       ? await fetchAdMediaMap(apiVersion, accessToken, rows.map((row) => String(row.ad_id || "")))
@@ -342,6 +422,23 @@ module.exports = async function handler(request, response) {
           frequency: normalized.metrics.frequency,
           cpl: normalized.metrics.cpl,
           leads: normalized.metrics.leads,
+          link_clicks: normalized.advanced.link_clicks,
+          outbound_clicks: normalized.advanced.outbound_clicks,
+          unique_link_clicks: normalized.advanced.unique_link_clicks,
+          messaging_conversation_started_7d: normalized.advanced.messaging_conversation_started_7d,
+          messaging_first_reply: normalized.advanced.messaging_first_reply,
+          contact_total: normalized.advanced.contact_total,
+          purchase: normalized.advanced.purchase,
+          initiate_checkout: normalized.advanced.initiate_checkout,
+          add_to_cart: normalized.advanced.add_to_cart,
+          complete_registration: normalized.advanced.complete_registration,
+          post_engagement: normalized.advanced.post_engagement,
+          video_views: normalized.advanced.video_views,
+          link_ctr: normalized.advanced.link_ctr,
+          link_cpc: normalized.advanced.link_cpc,
+          focus_action_type: agencyMetricFocus,
+          focus_results: normalized.advanced.focus_results,
+          focus_cost: normalized.advanced.focus_cost,
           result_type: primaryResult.type,
           results: primaryResult.value,
           creative_id: media.creative_id || null,
@@ -365,6 +462,7 @@ module.exports = async function handler(request, response) {
         since,
         until,
         level,
+        agencyMetricFocus,
         totalRows: rows.length
       },
       summary,

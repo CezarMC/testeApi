@@ -181,6 +181,7 @@ const clientNameEl = document.getElementById("clientName");
 const adAccountIdEl = document.getElementById("adAccountId");
 const apiVersionEl = document.getElementById("apiVersion");
 const reportTypeEl = document.getElementById("reportType");
+const agencyMetricFocusEl = document.getElementById("agencyMetricFocus");
 const tableBodyEl = document.getElementById("tableBody");
 const adviceEl = document.getElementById("advice");
 const rawOutputEl = document.getElementById("rawOutput");
@@ -191,6 +192,9 @@ const kLeadsEl = document.getElementById("kLeads");
 const kCtrEl = document.getElementById("kCtr");
 const kCpcEl = document.getElementById("kCpc");
 const kCplEl = document.getElementById("kCpl");
+const kLinkCtrEl = document.getElementById("kLinkCtr");
+const kCpmEl = document.getElementById("kCpm");
+const kMsgStart7dEl = document.getElementById("kMsgStart7d");
 const kReachEl = document.getElementById("kReach");
 const kImpressionsEl = document.getElementById("kImpressions");
 const kFrequencyEl = document.getElementById("kFrequency");
@@ -198,6 +202,7 @@ const kResultsEl = document.getElementById("kResults");
 const kResultTypeEl = document.getElementById("kResultType");
 const kDailySpendEl = document.getElementById("kDailySpend");
 const objectiveSummaryEl = document.getElementById("objectiveSummary");
+const advancedMetricsEl = document.getElementById("advancedMetrics");
 const stageBarsEl = document.getElementById("stageBars");
 const topAdsListEl = document.getElementById("topAdsList");
 const cvTitleEl = document.getElementById("cvTitle");
@@ -231,11 +236,29 @@ function normalizeResultType(type) {
   if (t.includes("lead")) return "Lead";
   if (t.includes("purchase")) return "Compra";
   if (t.includes("message")) return "Mensagem";
+  if (t.includes("contact_total")) return "Contato";
   if (t.includes("registration")) return "Cadastro";
   if (t.includes("checkout")) return "Checkout";
   if (t.includes("add_to_cart")) return "Carrinho";
   if (t.includes("link_click")) return "Clique no link";
   return type || "-";
+}
+
+function toPercent(value) {
+  return `${Number(value || 0).toFixed(2).replace(".", ",")}%`;
+}
+
+function renderAdvancedMetrics(summary = {}) {
+  if (!advancedMetricsEl) return;
+  const advanced = summary.advanced || {};
+  const lines = [
+    `Cliques no link: ${brInt(advanced.link_clicks || 0)} | Cliques de saída: ${brInt(advanced.outbound_clicks || 0)} | Cliques únicos link: ${brInt(advanced.unique_link_clicks || 0)}`,
+    `Conversas 7d: ${brInt(advanced.messaging_conversation_started_7d || 0)} | Primeira resposta: ${brInt(advanced.messaging_first_reply || 0)} | Contatos: ${brInt(advanced.contact_total || 0)}`,
+    `Compras: ${brInt(advanced.purchase || 0)} | Checkout: ${brInt(advanced.initiate_checkout || 0)} | Carrinho: ${brInt(advanced.add_to_cart || 0)} | Cadastro: ${brInt(advanced.complete_registration || 0)}`,
+    `CTR link: ${toPercent(advanced.link_ctr || 0)} | CPC link: ${brMoney(advanced.link_cpc || 0)} | Taxa clique->lead: ${toPercent(advanced.click_to_lead_rate || 0)} | ROAS compra: ${(Number(advanced.purchase_roas || 0)).toFixed(2).replace(".", ",")}`,
+    `Foco da agência: ${normalizeResultType(summary.focus_action_type || "-")} = ${brInt(summary.focus_results || 0)} | Custo por foco: ${brMoney(summary.focus_cost || 0)}`
+  ];
+  advancedMetricsEl.textContent = lines.join("\n");
 }
 
 function parseDateISO(value) {
@@ -367,8 +390,11 @@ function getClientViewIndicators() {
     ["Cliques", kClicksEl.textContent],
     ["Leads", kLeadsEl.textContent],
     ["CTR", kCtrEl.textContent],
+    ["CTR link", kLinkCtrEl.textContent],
     ["CPC", kCpcEl.textContent],
+    ["CPM", kCpmEl.textContent],
     ["CPL", kCplEl.textContent],
+    ["Conversas 7d", kMsgStart7dEl.textContent],
     ["Frequência", kFrequencyEl.textContent],
     ["Resultado principal", kResultsEl.textContent],
     ["Tipo de resultado", kResultTypeEl.textContent]
@@ -1276,6 +1302,9 @@ function clearMetrics() {
   kCtrEl.textContent = "0,00%";
   kCpcEl.textContent = brMoney(0);
   kCplEl.textContent = brMoney(0);
+  kLinkCtrEl.textContent = "0,00%";
+  kCpmEl.textContent = brMoney(0);
+  kMsgStart7dEl.textContent = brInt(0);
   kReachEl.textContent = brInt(0);
   kImpressionsEl.textContent = brInt(0);
   kFrequencyEl.textContent = "0,00";
@@ -1283,13 +1312,14 @@ function clearMetrics() {
   kResultTypeEl.textContent = "-";
   kDailySpendEl.textContent = brMoney(0);
   objectiveSummaryEl.textContent = "Carregue as métricas para gerar o resumo estratégico.";
+  if (advancedMetricsEl) advancedMetricsEl.textContent = "Carregue as métricas para visualizar indicadores avançados.";
   stageBarsEl.innerHTML = "";
   topAdsListEl.innerHTML = "";
   cvIndicatorsEl.innerHTML = "";
   cvObjectiveEl.textContent = "Sem dados.";
   cvStagesEl.innerHTML = "Sem dados.";
   cvTopAdsEl.innerHTML = "";
-  tableBodyEl.innerHTML = '<tr><td colspan="14">Sem dados ainda.</td></tr>';
+  tableBodyEl.innerHTML = '<tr><td colspan="18">Sem dados ainda.</td></tr>';
   adviceEl.textContent = "As dicas aparecerao aqui.";
   rawOutputEl.textContent = "Sem requisicao executada.";
   lastMetricsPayload = null;
@@ -1302,6 +1332,10 @@ function updateCards(summary) {
   kCtrEl.textContent = `${Number(summary.ctr || 0).toFixed(2).replace(".", ",")}%`;
   kCpcEl.textContent = brMoney(summary.cpc);
   kCplEl.textContent = brMoney(summary.cpl);
+  kLinkCtrEl.textContent = toPercent(summary.advanced?.link_ctr || 0);
+  kCpmEl.textContent = brMoney(summary.cpm || 0);
+  kMsgStart7dEl.textContent = brInt(summary.advanced?.messaging_conversation_started_7d || 0);
+  renderAdvancedMetrics(summary);
 }
 
 function updateMetricsHistory(payload) {
@@ -1340,7 +1374,7 @@ function renderMediaCell(row) {
 
 function updateTable(rows) {
   if (!Array.isArray(rows) || rows.length === 0) {
-    tableBodyEl.innerHTML = '<tr><td colspan="14">Sem linhas para o periodo selecionado.</td></tr>';
+    tableBodyEl.innerHTML = '<tr><td colspan="18">Sem linhas para o periodo selecionado.</td></tr>';
     return;
   }
   tableBodyEl.innerHTML = rows.map((row) => `
@@ -1354,8 +1388,12 @@ function updateTable(rows) {
       <td data-label="Impressões">${brInt(row.impressions || 0)}</td>
       <td data-label="Gasto">${brMoney(row.spend)}</td>
       <td data-label="Cliques">${brInt(row.clicks || 0)}</td>
+      <td data-label="Cliques link">${brInt(row.link_clicks || 0)}</td>
+      <td data-label="Conversas 7d">${brInt(row.messaging_conversation_started_7d || 0)}</td>
       <td data-label="CTR">${Number(row.ctr || 0).toFixed(2).replace(".", ",")}%</td>
+      <td data-label="CTR link">${toPercent(row.link_ctr || 0)}</td>
       <td data-label="CPC">${brMoney(row.cpc || 0)}</td>
+      <td data-label="CPC link">${brMoney(row.link_cpc || 0)}</td>
       <td data-label="CPM">${brMoney(row.cpm || 0)}</td>
       <td data-label="Frequência">${Number(row.frequency || 0).toFixed(2).replace(".", ",")}</td>
       <td data-label="Resultado">${brInt(row.results || row.leads || 0)} (${row.result_type || "-"})</td>
@@ -1384,7 +1422,8 @@ async function loadMetrics() {
     adAccountId: adAccountIdEl.value.trim() || selected.dataset.account || "",
     dateStart,
     dateEnd,
-    reportType: reportTypeEl.value
+    reportType: reportTypeEl.value,
+    agencyMetricFocus: agencyMetricFocusEl ? agencyMetricFocusEl.value : "lead"
   };
   rawOutputEl.textContent = "Carregando...";
   const result = await apiPost("/api/meta-insights", payload);
@@ -1401,6 +1440,7 @@ async function loadMetrics() {
   lastMetricsPayload = {
     clientName: selected.textContent.split(" - ")[0] || "Cliente",
     reportType: reportTypeEl.value,
+    agencyMetricFocus: agencyMetricFocusEl ? agencyMetricFocusEl.value : "lead",
     dateStart,
     dateEnd,
     metrics: result.data.summary || {},
