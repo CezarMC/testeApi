@@ -149,6 +149,7 @@ const displayNameInputEl = document.getElementById("displayNameInput");
 const saveDisplayNameBtnEl = document.getElementById("saveDisplayNameBtn");
 const displayNameEditorEl = document.getElementById("displayNameEditor");
 const editDisplayNameBtnEl = document.getElementById("editDisplayNameBtn");
+const addLinkedAccountsBtnEl = document.getElementById("addLinkedAccountsBtn");
 
 const signupEmailEl = document.getElementById("signupEmail");
 const signupDocumentEl = document.getElementById("signupDocument");
@@ -169,6 +170,7 @@ const metaTokenEl = document.getElementById("metaToken");
 const tokenToggleBtnEl = document.getElementById("tokenToggleBtn");
 const tokenFormEl = document.getElementById("tokenForm");
 const availableAccountSelectEl = document.getElementById("availableAccountSelect");
+const metricsClientSelectEl = document.getElementById("metricsClientSelect");
 const clientSelectEl = document.getElementById("clientSelect");
 const clientNameEl = document.getElementById("clientName");
 const adAccountIdEl = document.getElementById("adAccountId");
@@ -503,20 +505,20 @@ function setTokenStatus(kind, message) {
 }
 
 function clearAvailableAccounts() {
-  availableAccountSelectEl.innerHTML = "<option value=''>Selecione...</option>";
+  availableAccountSelectEl.innerHTML = "";
 }
 
 function renderAvailableAccounts(accounts) {
-  const selected = availableAccountSelectEl.value;
+  const selected = new Set(Array.from(availableAccountSelectEl.selectedOptions || []).map((option) => option.value));
   clearAvailableAccounts();
   accounts.forEach((account) => {
     const option = document.createElement("option");
-    const numericId = account.accountId || account.id || "";
+    const numericId = String(account.accountId || account.id || "").trim();
     option.value = numericId;
     option.textContent = `${account.name} - act_${numericId}`;
     option.dataset.account = numericId;
     option.dataset.apiVersion = apiVersionEl.value.trim() || "v25.0";
-    if (numericId === selected) option.selected = true;
+    if (selected.has(numericId)) option.selected = true;
     availableAccountSelectEl.appendChild(option);
   });
 }
@@ -530,13 +532,11 @@ async function loadAvailableAccounts() {
   }
   const accounts = result.data.accounts || [];
   renderAvailableAccounts(accounts);
-  if (accounts.length > 0) {
-    availableAccountSelectEl.value = String(accounts[0].accountId || accounts[0].id || "");
-    const option = availableAccountSelectEl.options[availableAccountSelectEl.selectedIndex];
-    if (option && option.value) {
-      await ensureClientFromLinkedAccount(option);
-    }
+  if (accounts.length === 0) {
+    setMainNextStep("token validado, mas nenhuma conta vinculada foi encontrada.");
+    return;
   }
+  setMainNextStep("selecione uma ou mais contas vinculadas e clique em Adicionar selecionadas.");
 }
 
 function showOnly(screen) {
@@ -1035,7 +1035,9 @@ async function loadClients() {
 
 function renderClients(clients) {
   const selected = clientSelectEl.value;
+  const selectedMetricsClient = metricsClientSelectEl ? metricsClientSelectEl.value : "";
   clientSelectEl.innerHTML = "<option value=''>Selecione...</option>";
+  if (metricsClientSelectEl) metricsClientSelectEl.innerHTML = "<option value=''>Selecione...</option>";
   clients.forEach((client) => {
     const option = document.createElement("option");
     option.value = client.id;
@@ -1044,7 +1046,15 @@ function renderClients(clients) {
     option.dataset.apiVersion = client.apiVersion;
     if (client.id === selected) option.selected = true;
     clientSelectEl.appendChild(option);
+    if (metricsClientSelectEl) {
+      const metricsOption = option.cloneNode(true);
+      if (client.id === selectedMetricsClient) metricsOption.selected = true;
+      metricsClientSelectEl.appendChild(metricsOption);
+    }
   });
+  if (metricsClientSelectEl && !metricsClientSelectEl.value && metricsClientSelectEl.options.length > 1) {
+    metricsClientSelectEl.selectedIndex = 1;
+  }
 }
 
 function getLinkedAccountPayload(option) {
@@ -1058,7 +1068,8 @@ function getLinkedAccountPayload(option) {
   };
 }
 
-async function ensureClientFromLinkedAccount(option) {
+async function ensureClientFromLinkedAccount(option, opts = {}) {
+  const silent = Boolean(opts.silent);
   const linked = getLinkedAccountPayload(option);
   if (!linked || !linked.adAccountId) return false;
 
@@ -1078,16 +1089,44 @@ async function ensureClientFromLinkedAccount(option) {
 
   const result = await apiPost("/api/user-clients", payload);
   if (!result.ok || !result.data?.client?.id) {
-    setStatus("err", result.data?.error || "Erro ao ativar conta vinculada.");
-    setMainNextStep("confira o token Meta e tente novamente.");
+    if (!silent) {
+      setStatus("err", result.data?.error || "Erro ao ativar conta vinculada.");
+      setMainNextStep("confira o token Meta e tente novamente.");
+    }
     return false;
   }
 
   renderClients(result.data.clients || []);
   clientSelectEl.value = result.data.client.id;
-  setStatus("ok", "Conta vinculada ativada automaticamente.");
-  setMainNextStep("agora clique em Atualizar metricas.");
+  if (metricsClientSelectEl) metricsClientSelectEl.value = result.data.client.id;
+  if (!silent) {
+    setStatus("ok", "Conta vinculada ativada automaticamente.");
+    setMainNextStep("agora clique em Atualizar metricas.");
+  }
   return true;
+}
+
+async function addSelectedLinkedAccounts() {
+  const selectedOptions = Array.from(availableAccountSelectEl.selectedOptions || []).filter((option) => option.value);
+  if (selectedOptions.length === 0) {
+    setStatus("warn", "Selecione uma ou mais contas vinculadas.");
+    setMainNextStep("marque as contas e clique em Adicionar selecionadas.");
+    return;
+  }
+
+  let addedCount = 0;
+  for (const option of selectedOptions) {
+    const ok = await ensureClientFromLinkedAccount(option, { silent: true });
+    if (ok) addedCount += 1;
+  }
+
+  if (addedCount === 0) {
+    setStatus("warn", "Nenhuma conta foi adicionada agora.");
+    return;
+  }
+
+  setStatus("ok", `${addedCount} cliente(s) adicionado(s) da selecao.`);
+  setMainNextStep("escolha o cliente no campo Cliente para metricas e clique em Atualizar metricas.");
 }
 
 async function saveClient() {
@@ -1232,17 +1271,12 @@ function updateTable(rows) {
 }
 
 async function loadMetrics() {
-  let selected = clientSelectEl.options[clientSelectEl.selectedIndex];
+  const selectedClientEl = metricsClientSelectEl || clientSelectEl;
+  const selected = selectedClientEl.options[selectedClientEl.selectedIndex];
   if (!selected || !selected.value) {
-    const linkedOption = availableAccountSelectEl.options[availableAccountSelectEl.selectedIndex];
-    if (!linkedOption || !linkedOption.value) {
-      setStatus("warn", "Selecione uma conta vinculada ao token.");
-      setMainNextStep("escolha uma conta vinculada e tente novamente.");
-      return;
-    }
-    const created = await ensureClientFromLinkedAccount(linkedOption);
-    if (!created) return;
-    selected = clientSelectEl.options[clientSelectEl.selectedIndex];
+    setStatus("warn", "Selecione um cliente no campo Cliente para metricas.");
+    setMainNextStep("marque contas vinculadas, clique em Adicionar selecionadas e escolha o cliente.");
+    return;
   }
   const dateStartEl = document.getElementById("dateStart");
   const dateEndEl = document.getElementById("dateEnd");
@@ -1568,6 +1602,7 @@ function bindEvents() {
   document.getElementById("saveTokenBtn").addEventListener("click", saveMetaToken);
   document.getElementById("deleteTokenBtn").addEventListener("click", deleteMetaToken);
   if (tokenToggleBtnEl) tokenToggleBtnEl.addEventListener("click", () => { if (tokenFormEl) tokenFormEl.classList.toggle("hidden"); });
+  if (addLinkedAccountsBtnEl) addLinkedAccountsBtnEl.addEventListener("click", addSelectedLinkedAccounts);
   document.getElementById("saveClientBtn").addEventListener("click", saveClient);
   document.getElementById("removeClientBtn").addEventListener("click", removeClient);
   document.getElementById("loadMetricsBtn").addEventListener("click", loadMetrics);
@@ -1583,6 +1618,7 @@ function bindEvents() {
   clientSelectEl.addEventListener("change", () => {
     const option = clientSelectEl.options[clientSelectEl.selectedIndex];
     if (!option || !option.value) return;
+    if (metricsClientSelectEl) metricsClientSelectEl.value = option.value;
     clientNameEl.value = option.textContent.split(" - ")[0] || "";
     adAccountIdEl.value = option.dataset.account || "";
     apiVersionEl.value = option.dataset.apiVersion || "v25.0";
@@ -1590,10 +1626,21 @@ function bindEvents() {
     setMainNextStep("clique em Atualizar metricas para este cliente.");
   });
   availableAccountSelectEl.addEventListener("change", () => {
-    const option = availableAccountSelectEl.options[availableAccountSelectEl.selectedIndex];
-    if (!option || !option.value) return;
-    ensureClientFromLinkedAccount(option);
+    const selectedCount = Array.from(availableAccountSelectEl.selectedOptions || []).filter((option) => option.value).length;
+    if (selectedCount > 0) setMainNextStep(`${selectedCount} conta(s) marcada(s). Clique em Adicionar selecionadas.`);
   });
+  if (metricsClientSelectEl) {
+    metricsClientSelectEl.addEventListener("change", () => {
+      const option = metricsClientSelectEl.options[metricsClientSelectEl.selectedIndex];
+      if (!option || !option.value) return;
+      clientSelectEl.value = option.value;
+      clientNameEl.value = option.textContent.split(" - ")[0] || "";
+      adAccountIdEl.value = option.dataset.account || "";
+      apiVersionEl.value = option.dataset.apiVersion || "v25.0";
+      clearMetrics();
+      setMainNextStep("cliente definido. Agora clique em Atualizar metricas.");
+    });
+  }
   document.querySelectorAll("#periodChips .chip").forEach((chip) => {
     chip.addEventListener("click", () => {
       document.querySelectorAll("#periodChips .chip").forEach((item) => item.classList.remove("active"));

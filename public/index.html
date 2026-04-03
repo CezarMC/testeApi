@@ -298,6 +298,11 @@
 			padding: 10px 11px;
 		}
 
+		select[multiple].multi-select {
+			min-height: 124px;
+			padding: 8px;
+		}
+
 		input:focus, select:focus {
 			outline: none;
 			border-color: var(--ring);
@@ -760,8 +765,12 @@
 
 			<div class="client-box">
 				<div class="field">
-					<label for="availableAccountSelect">Conta vinculada ao token</label>
-					<select id="availableAccountSelect"><option value="">Selecione...</option></select>
+					<label for="availableAccountSelect">Contas vinculadas ao token</label>
+					<select id="availableAccountSelect" class="multi-select" multiple size="6"></select>
+					<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-top:8px;">
+						<p class="hint" style="margin:0;">Selecione uma ou mais contas para adicionar como clientes.</p>
+						<button id="addLinkedAccountsBtn" class="btn btn-soft btn-sm" type="button">Adicionar selecionadas</button>
+					</div>
 				</div>
 			</div>
 
@@ -792,6 +801,10 @@
 			</div>
 
 			<div class="field" style="margin-bottom:18px;">
+				<div class="field" style="margin-bottom:10px;">
+					<label for="metricsClientSelect">Cliente para métricas</label>
+					<select id="metricsClientSelect"><option value="">Selecione...</option></select>
+				</div>
 				<div style="display:flex; gap:12px; align-items:end; flex-wrap:wrap;">
 					<div style="flex:1; min-width:180px;">
 						<label for="dateStart">Data inicial</label>
