@@ -197,8 +197,9 @@
 		.panel-side {
 			display: grid;
 			justify-items: end;
-			gap: 10px;
+			gap: 8px;
 			flex-shrink: 0;
+			padding-top: 2px;
 		}
 
 		.panel-brand {
@@ -221,18 +222,47 @@
 			color: transparent;
 		}
 
+		.panel-badge {
+			margin-bottom: 0;
+			padding: 5px 9px;
+			font-size: 0.69rem;
+			letter-spacing: 0.08em;
+			background: rgba(11, 120, 218, 0.08);
+			color: #2e74aa;
+		}
+
 		.panel-logout {
-			min-height: 30px;
-			padding: 6px 10px;
-			font-size: 0.82rem;
-			opacity: 0.85;
+			min-height: 28px;
+			padding: 4px 8px;
+			font-size: 0.78rem;
+			font-weight: 700;
+			color: #5b7590;
+			background: transparent;
+			border: 1px solid rgba(23, 58, 88, 0.08);
+			border-radius: 999px;
+			opacity: 1;
 			flex-shrink: 0;
+		}
+
+		.account-box {
+			padding: 14px 16px;
+			background: linear-gradient(180deg, rgba(245, 250, 255, 0.98), rgba(238, 246, 253, 0.94));
 		}
 
 		.greeting-row {
 			display: flex;
 			align-items: center;
-			gap: 10px;
+			gap: 8px;
+			min-height: 34px;
+		}
+
+		.edit-name-btn {
+			min-height: 30px;
+			padding: 5px 12px;
+			font-size: 0.82rem;
+			color: #31536f;
+			background: rgba(231, 240, 250, 0.9);
+			border-radius: 12px;
 		}
 
 		.actions { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -667,15 +697,15 @@
 				<p class="subtitle">Ambiente isolado por usuario, com token criptografado e clientes separados por conta.</p>
 				</div>
 				<div class="panel-side">
-					<span class="badge">Meta Business + IA</span>
+					<span class="badge panel-badge">Meta Business + IA</span>
 					<button id="logoutBtn" class="btn btn-soft panel-logout" type="button">Sair</button>
 				</div>
 			</div>
 
-			<div class="client-box">
+			<div class="client-box account-box">
 				<div class="greeting-row">
 					<div id="authStatus" class="greeting">Olá, <span class="name">Usuario</span></div>
-					<button id="editDisplayNameBtn" class="btn btn-soft hidden" type="button">Alt</button>
+					<button id="editDisplayNameBtn" class="btn btn-soft edit-name-btn hidden" type="button">Alt</button>
 				</div>
 				<div id="displayNameEditor" class="actions" style="align-items:flex-end;">
 					<div class="field" style="flex:1; min-width:220px;">
