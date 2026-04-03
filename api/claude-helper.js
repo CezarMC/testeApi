@@ -1,25 +1,73 @@
 const { getAuthenticatedUser } = require("./_lib/supabase");
 const { json, parseJsonBody } = require("./_lib/http");
 
-function fallbackAdvice(metrics, reportType, periodDays, clientName) {
+function firstNameOf(value) {
+  return String(value || "Usuario").trim().split(/\s+/)[0] || "Usuario";
+}
+
+function compactRows(rows) {
+  if (!Array.isArray(rows)) return [];
+  return rows.slice(0, 12).map((row) => ({
+    campaign: row.campaign_name || row.campaign || "-",
+    adset: row.adset_name || row.adset || "-",
+    ad: row.ad_name || row.ad || "-",
+    spend: Number(row.spend || 0),
+    clicks: Number(row.clicks || 0),
+    ctr: Number(row.ctr || 0),
+    cpc: Number(row.cpc || 0),
+    cpm: Number(row.cpm || 0),
+    frequency: Number(row.frequency || 0),
+    results: Number(row.results || row.result || 0),
+    resultType: row.result_type || row.resultType || "-"
+  }));
+}
+
+function topRowInsights(rows) {
+  const compact = compactRows(rows);
+  const bySpend = [...compact].sort((a, b) => b.spend - a.spend).slice(0, 3);
+  const byResults = [...compact].sort((a, b) => b.results - a.results).slice(0, 3);
+  return { bySpend, byResults };
+}
+
+function fallbackAdvice(metrics, reportType, periodDays, clientName, userName, question, rows) {
   const spend = Number(metrics.spend || 0);
   const ctr = Number(metrics.ctr || 0);
   const cpc = Number(metrics.cpc || 0);
   const leads = Number(metrics.leads || 0);
   const cpl = Number(metrics.cpl || 0);
-  const notes = [];
+  const diagnosis = [];
+  const alerts = [];
+  const recommendations = [];
+  const userFirstName = firstNameOf(userName);
+  const highlighted = topRowInsights(rows);
 
-  if (spend === 0) notes.push("Nenhum gasto no período. Confirme se a campanha está ativa.");
-  if (ctr < 1 && spend > 0) notes.push("CTR baixo. Teste novos criativos e ajuste o texto principal.");
-  if (cpc > 3 && spend > 0) notes.push("CPC alto. Revise segmentação e exclua públicos fracos.");
-  if (leads === 0 && spend > 0) notes.push("Sem leads. Valide a oferta e a página de destino.");
-  if (leads > 0 && cpl > 0) notes.push(`CPL atual em ${cpl.toFixed(2)}. Busque reduzir 10% no próximo ciclo.`);
-  if (notes.length === 0) notes.push("Indicadores equilibrados. Faça otimizações graduais por criativo.");
+  if (spend === 0) alerts.push("Nenhum gasto no período. Confirme se a campanha está ativa e se a conta correta foi selecionada.");
+  if (ctr < 1 && spend > 0) diagnosis.push("CTR abaixo do ideal para tráfego pago. Isso sugere desgaste criativo, promessa fraca ou segmentação ampla demais.");
+  if (cpc > 3 && spend > 0) diagnosis.push("CPC pressionado. O leilão pode estar caro ou o anúncio não está convertendo clique com eficiência.");
+  if (leads === 0 && spend > 0) alerts.push("Houve gasto sem geração de leads. Vale revisar oferta, formulário e página de destino imediatamente.");
+  if (leads > 0 && cpl > 0) diagnosis.push(`O CPL atual está em ${cpl.toFixed(2)}. O foco agora é reduzir custo sem derrubar o volume.`);
+  if (!diagnosis.length && !alerts.length) diagnosis.push("Os indicadores estão estáveis. O melhor caminho é otimização incremental com teste controlado.");
+
+  recommendations.push("Priorize os anúncios com maior gasto e compare CTR, CPC e resultado antes de escalar verba.");
+  if (ctr < 1 && spend > 0) recommendations.push("Teste duas novas variações de criativo com gancho mais forte nos primeiros 3 segundos ou na primeira linha do texto.");
+  if (cpc > 3 && spend > 0) recommendations.push("Refine público, remova segmentos fracos e observe se a queda no CPC vem acompanhada de manutenção no volume.");
+  if (leads === 0 && spend > 0) recommendations.push("Revise o funil completo: anúncio, oferta, formulário e tempo de resposta comercial.");
+  if (highlighted.bySpend.length) {
+    recommendations.push(`Olhe primeiro para ${highlighted.bySpend[0].ad} porque ele concentra mais gasto no recorte analisado.`);
+  }
+  if (question) {
+    recommendations.push(`Pergunta priorizada: ${String(question).trim()}. Use essa direção na próxima rodada de otimização.`);
+  }
 
   return {
-    summary: `Análise automática para ${clientName || "cliente"} no relatório ${reportType} (${periodDays} dia(s)).`,
-    recommendations: notes.slice(0, 3),
-    nextAction: "Revise os 3 maiores gastos e teste 2 variações de criativo."
+    greeting: `${userFirstName}, aqui vai uma leitura mais estratégica das métricas de ${clientName || "cliente"}.`,
+    summary: `Análise automática para ${clientName || "cliente"} no relatório ${reportType} (${periodDays} dia(s)), com foco em decisão prática e próximos passos.`,
+    diagnosis: diagnosis.slice(0, 3),
+    alerts: alerts.slice(0, 3),
+    recommendations: recommendations.slice(0, 5),
+    nextAction: highlighted.bySpend.length
+      ? `Revise hoje os 3 maiores gastos, começando por ${highlighted.bySpend[0].ad}, e teste 2 variações de criativo.`
+      : "Revise os 3 maiores gastos e teste 2 variações de criativo."
   };
 }
 
@@ -41,23 +89,38 @@ module.exports = async function handler(request, response) {
   }
 
   const clientName = String(body.clientName || "").trim();
+  const userName = String(body.userName || user.email || "Usuario").trim();
   const reportType = String(body.reportType || "basico").trim().toLowerCase();
   const periodDays = Number(body.periodDays || 1);
+  const question = String(body.question || "").trim();
+  const objectiveSummary = String(body.objectiveSummary || "").trim();
   const metrics = body.metrics && typeof body.metrics === "object" ? body.metrics : {};
+  const rows = Array.isArray(body.rows) ? body.rows : [];
   const apiKey = String(process.env.ANTHROPIC_API_KEY || "").trim();
 
   if (!apiKey) {
-    return json(response, 200, { ok: true, mode: "fallback", advice: fallbackAdvice(metrics, reportType, periodDays, clientName) });
+    return json(response, 200, { ok: true, mode: "fallback", advice: fallbackAdvice(metrics, reportType, periodDays, clientName, userName, question, rows) });
   }
+
+  const rowInsights = topRowInsights(rows);
 
   const prompt = [
     "Você é um analista de mídia paga em português do Brasil.",
-    "Responda de forma objetiva e acionável para pequeno negócio.",
+    "Responda de forma objetiva, humana e acionável para pequeno negócio.",
+    `Você está falando com: ${userName}`,
+    "Use o primeiro nome do usuário no greeting, sem exagerar.",
     `Cliente: ${clientName || "Não informado"}`,
     `Tipo de relatório: ${reportType}`,
     `Período (dias): ${periodDays}`,
+    `Resumo estratégico atual: ${objectiveSummary || "Não informado"}`,
     `Métricas: ${JSON.stringify(metrics)}`,
-    "Retorne JSON puro com as chaves: summary, recommendations (array de 3 itens), nextAction."
+    `Linhas detalhadas resumidas: ${JSON.stringify(compactRows(rows))}`,
+    `Top gastos: ${JSON.stringify(rowInsights.bySpend)}`,
+    `Top resultados: ${JSON.stringify(rowInsights.byResults)}`,
+    question ? `Pergunta do usuário: ${question}` : "Pergunta do usuário: nenhuma. Gere análise proativa.",
+    "Cruze métricas agregadas com os dados detalhados antes de recomendar mudanças.",
+    "Se houver sinais de risco, deixe isso explícito.",
+    "Retorne JSON puro com as chaves: greeting, summary, diagnosis (array com até 3 itens), alerts (array com até 3 itens), recommendations (array de 3 a 5 itens), nextAction."
   ].join("\n");
 
   try {
@@ -81,7 +144,7 @@ module.exports = async function handler(request, response) {
       return json(response, 200, {
         ok: true,
         mode: "fallback",
-        advice: fallbackAdvice(metrics, reportType, periodDays, clientName),
+        advice: fallbackAdvice(metrics, reportType, periodDays, clientName, userName, question, rows),
         claudeError: data
       });
     }
@@ -91,7 +154,14 @@ module.exports = async function handler(request, response) {
     try {
       parsed = JSON.parse(text);
     } catch (_) {
-      parsed = { summary: text || "Claude retornou resposta sem JSON.", recommendations: [], nextAction: "Ajuste o prompt para resposta estruturada." };
+      parsed = {
+        greeting: `${firstNameOf(userName)}, recebi a análise da IA em formato livre.`,
+        summary: text || "Claude retornou resposta sem JSON.",
+        diagnosis: [],
+        alerts: [],
+        recommendations: [],
+        nextAction: "Ajuste o prompt para resposta estruturada."
+      };
     }
 
     return json(response, 200, { ok: true, mode: "claude", advice: parsed });
@@ -99,7 +169,7 @@ module.exports = async function handler(request, response) {
     return json(response, 200, {
       ok: true,
       mode: "fallback",
-      advice: fallbackAdvice(metrics, reportType, periodDays, clientName),
+      advice: fallbackAdvice(metrics, reportType, periodDays, clientName, userName, question, rows),
       detail: error.message
     });
   }

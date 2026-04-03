@@ -1279,32 +1279,54 @@ async function loadMetrics() {
   setMainNextStep("clique em Gerar dicas da IA.");
 }
 
+function getAdviceUserName() {
+  return getPanelName(currentUser) || "Usuario";
+}
+
 async function loadAdvice(extra = {}) {
   if (!lastMetricsPayload) {
     setStatus("warn", "Atualize metricas antes de pedir recomendacoes.");
     return;
   }
+
   adviceEl.textContent = "Gerando recomendacoes...";
-  // Enviar todas as métricas detalhadas para a IA
-  const payload = { ...lastMetricsPayload, ...extra };
+  const payload = {
+    ...lastMetricsPayload,
+    userName: getAdviceUserName(),
+    objectiveSummary: objectiveSummaryEl ? objectiveSummaryEl.textContent.trim() : "",
+    ...extra
+  };
   const result = await apiPost("/api/claude-helper", payload);
   if (!result.ok || !result.data.ok) {
     adviceEl.textContent = "Nao foi possivel gerar dicas agora.";
     setMainNextStep("faca login novamente ou tente mais tarde.");
     return;
   }
+
   const advice = result.data.advice || {};
+  const greeting = String(advice.greeting || "").trim();
+  const diagnosis = Array.isArray(advice.diagnosis) ? advice.diagnosis : [];
+  const alerts = Array.isArray(advice.alerts) ? advice.alerts : [];
   const recommendations = Array.isArray(advice.recommendations) ? advice.recommendations : [];
+
   adviceEl.textContent = [
+    greeting || null,
+    greeting ? "" : null,
     `Modo: ${result.data.mode || "fallback"}`,
     "",
     `Resumo: ${advice.summary || "-"}`,
     "",
+    diagnosis.length ? "Diagnostico:" : null,
+    ...diagnosis.map((item, index) => `${index + 1}. ${item}`),
+    diagnosis.length ? "" : null,
+    alerts.length ? "Alertas:" : null,
+    ...alerts.map((item, index) => `${index + 1}. ${item}`),
+    alerts.length ? "" : null,
     "Recomendações:",
     ...recommendations.map((item, index) => `${index + 1}. ${item}`),
     "",
     `Próxima ação: ${advice.nextAction || "-"}`
-  ].join("\n");
+  ].filter(Boolean).join("\n");
   setMainNextStep("revise as recomendacoes e ajuste as campanhas.");
 }
 
