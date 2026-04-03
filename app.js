@@ -150,6 +150,11 @@ const saveDisplayNameBtnEl = document.getElementById("saveDisplayNameBtn");
 const displayNameEditorEl = document.getElementById("displayNameEditor");
 const editDisplayNameBtnEl = document.getElementById("editDisplayNameBtn");
 const addLinkedAccountsBtnEl = document.getElementById("addLinkedAccountsBtn");
+const linkedAccountsBoxEl = document.getElementById("linkedAccountsBox");
+const linkedAccountsToggleBtnEl = document.getElementById("linkedAccountsToggleBtn");
+const linkedAccountsMenuEl = document.getElementById("linkedAccountsMenu");
+const linkedAccountsSearchEl = document.getElementById("linkedAccountsSearch");
+const linkedAccountsListEl = document.getElementById("linkedAccountsList");
 
 const signupEmailEl = document.getElementById("signupEmail");
 const signupDocumentEl = document.getElementById("signupDocument");
@@ -506,6 +511,62 @@ function setTokenStatus(kind, message) {
 
 function clearAvailableAccounts() {
   availableAccountSelectEl.innerHTML = "";
+  renderLinkedAccountsList();
+  updateLinkedAccountsToggleText();
+}
+
+function getSelectedLinkedAccountsCount() {
+  return Array.from(availableAccountSelectEl.selectedOptions || []).filter((option) => option.value).length;
+}
+
+function updateLinkedAccountsToggleText() {
+  if (!linkedAccountsToggleBtnEl) return;
+  const total = availableAccountSelectEl.options.length;
+  const selectedCount = getSelectedLinkedAccountsCount();
+  if (!total) {
+    linkedAccountsToggleBtnEl.textContent = "Nenhuma conta encontrada";
+    return;
+  }
+  linkedAccountsToggleBtnEl.textContent = selectedCount > 0
+    ? `${selectedCount} conta(s) selecionada(s)`
+    : "Selecionar contas...";
+}
+
+function renderLinkedAccountsList(filterText = "") {
+  if (!linkedAccountsListEl) return;
+  const query = String(filterText || "").trim().toLowerCase();
+  linkedAccountsListEl.innerHTML = "";
+
+  const options = Array.from(availableAccountSelectEl.options || []);
+  const filtered = query
+    ? options.filter((option) => String(option.textContent || "").toLowerCase().includes(query))
+    : options;
+
+  if (filtered.length === 0) {
+    linkedAccountsListEl.innerHTML = '<div class="hint" style="margin:0;">Nenhuma conta para este filtro.</div>';
+    return;
+  }
+
+  filtered.forEach((option) => {
+    const label = document.createElement("label");
+    label.className = "multi-item";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = option.selected;
+    checkbox.addEventListener("change", () => {
+      option.selected = checkbox.checked;
+      updateLinkedAccountsToggleText();
+      availableAccountSelectEl.dispatchEvent(new Event("change"));
+    });
+
+    const text = document.createElement("span");
+    text.textContent = option.textContent || "Conta";
+
+    label.appendChild(checkbox);
+    label.appendChild(text);
+    linkedAccountsListEl.appendChild(label);
+  });
 }
 
 function renderAvailableAccounts(accounts) {
@@ -521,6 +582,8 @@ function renderAvailableAccounts(accounts) {
     if (selected.has(numericId)) option.selected = true;
     availableAccountSelectEl.appendChild(option);
   });
+  renderLinkedAccountsList(linkedAccountsSearchEl ? linkedAccountsSearchEl.value : "");
+  updateLinkedAccountsToggleText();
 }
 
 async function loadAvailableAccounts() {
@@ -1633,6 +1696,23 @@ function bindEvents() {
   document.getElementById("saveTokenBtn").addEventListener("click", saveMetaToken);
   document.getElementById("deleteTokenBtn").addEventListener("click", deleteMetaToken);
   if (tokenToggleBtnEl) tokenToggleBtnEl.addEventListener("click", () => { if (tokenFormEl) tokenFormEl.classList.toggle("hidden"); });
+  if (linkedAccountsToggleBtnEl) {
+    linkedAccountsToggleBtnEl.addEventListener("click", () => {
+      if (!linkedAccountsMenuEl) return;
+      linkedAccountsMenuEl.classList.toggle("hidden");
+      if (!linkedAccountsMenuEl.classList.contains("hidden") && linkedAccountsSearchEl) {
+        linkedAccountsSearchEl.focus();
+      }
+    });
+  }
+  if (linkedAccountsSearchEl) {
+    linkedAccountsSearchEl.addEventListener("input", () => renderLinkedAccountsList(linkedAccountsSearchEl.value));
+  }
+  document.addEventListener("click", (event) => {
+    if (!linkedAccountsBoxEl || !linkedAccountsMenuEl) return;
+    if (linkedAccountsMenuEl.classList.contains("hidden")) return;
+    if (!linkedAccountsBoxEl.contains(event.target)) linkedAccountsMenuEl.classList.add("hidden");
+  });
   if (addLinkedAccountsBtnEl) addLinkedAccountsBtnEl.addEventListener("click", addSelectedLinkedAccounts);
   document.getElementById("saveClientBtn").addEventListener("click", saveClient);
   document.getElementById("removeClientBtn").addEventListener("click", removeClient);
@@ -1657,7 +1737,8 @@ function bindEvents() {
     setMainNextStep("clique em Atualizar metricas para este cliente.");
   });
   availableAccountSelectEl.addEventListener("change", () => {
-    const selectedCount = Array.from(availableAccountSelectEl.selectedOptions || []).filter((option) => option.value).length;
+    const selectedCount = getSelectedLinkedAccountsCount();
+    updateLinkedAccountsToggleText();
     if (selectedCount > 0) setMainNextStep(`${selectedCount} conta(s) marcada(s). Clique em Adicionar selecionadas.`);
   });
   if (metricsClientSelectEl) {

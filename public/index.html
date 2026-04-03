@@ -298,9 +298,64 @@
 			padding: 10px 11px;
 		}
 
-		select[multiple].multi-select {
-			min-height: 124px;
+		.multi-box {
+			position: relative;
+		}
+
+		.multi-toggle {
+			width: 100%;
+			min-height: 42px;
+			border: 1px solid rgba(15, 41, 64, 0.2);
+			border-radius: 10px;
+			background: #fbfdff;
+			color: var(--ink);
+			padding: 10px 11px;
+			text-align: left;
+			font-weight: 600;
+		}
+
+		.multi-menu {
+			position: absolute;
+			top: calc(100% + 6px);
+			left: 0;
+			right: 0;
+			z-index: 12;
+			border: 1px solid rgba(15, 41, 64, 0.2);
+			border-radius: 10px;
+			background: #fbfdff;
+			box-shadow: 0 10px 24px rgba(6, 28, 48, 0.16);
 			padding: 8px;
+			display: grid;
+			gap: 8px;
+		}
+
+		.multi-search {
+			min-height: 36px;
+			padding: 8px 10px;
+			font-size: 0.86rem;
+		}
+
+		.multi-list {
+			max-height: 220px;
+			overflow: auto;
+			display: grid;
+			gap: 6px;
+			padding-right: 4px;
+		}
+
+		.multi-item {
+			display: flex;
+			align-items: flex-start;
+			gap: 8px;
+			font-size: 0.88rem;
+			color: #173a58;
+			line-height: 1.3;
+		}
+
+		.multi-item input {
+			width: 15px;
+			height: 15px;
+			margin-top: 2px;
 		}
 
 		input:focus, select:focus {
@@ -766,7 +821,14 @@
 			<div class="client-box">
 				<div class="field">
 					<label for="availableAccountSelect">Contas vinculadas ao token</label>
-					<select id="availableAccountSelect" class="multi-select" multiple size="6"></select>
+					<div id="linkedAccountsBox" class="multi-box">
+						<button id="linkedAccountsToggleBtn" class="multi-toggle" type="button">Selecionar contas...</button>
+						<div id="linkedAccountsMenu" class="multi-menu hidden">
+							<input id="linkedAccountsSearch" class="multi-search" type="text" placeholder="Buscar conta..." />
+							<div id="linkedAccountsList" class="multi-list"></div>
+						</div>
+					</div>
+					<select id="availableAccountSelect" class="hidden" multiple size="6"></select>
 					<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-top:8px;">
 						<p class="hint" style="margin:0;">Selecione uma ou mais contas para adicionar como clientes.</p>
 						<button id="addLinkedAccountsBtn" class="btn btn-soft btn-sm" type="button">Adicionar selecionadas</button>
