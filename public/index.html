@@ -194,10 +194,17 @@
 			gap: 12px;
 		}
 
+		.panel-side {
+			display: grid;
+			justify-items: end;
+			gap: 10px;
+			flex-shrink: 0;
+		}
+
 		.panel-brand {
 			display: flex;
 			align-items: center;
-			gap: 10px;
+			gap: 0;
 			flex-wrap: wrap;
 			margin-bottom: 6px;
 		}
@@ -655,12 +662,14 @@
 				<div>
 				<div class="panel-brand">
 					<h2 class="panel-brand-name">InsightFlow</h2>
-					<span class="badge">Meta Business + IA</span>
 				</div>
 				<h1>Painel de Metricas por Cliente</h1>
 				<p class="subtitle">Ambiente isolado por usuario, com token criptografado e clientes separados por conta.</p>
 				</div>
-				<button id="logoutBtn" class="btn btn-soft panel-logout" type="button">Sair</button>
+				<div class="panel-side">
+					<span class="badge">Meta Business + IA</span>
+					<button id="logoutBtn" class="btn btn-soft panel-logout" type="button">Sair</button>
+				</div>
 			</div>
 
 			<div class="client-box">
