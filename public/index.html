@@ -187,19 +187,19 @@
 			gap: 10px;
 		}
 
-		.auth-box {
-			position: relative;
-			padding-top: 42px;
+		.panel-heading {
+			display: flex;
+			justify-content: space-between;
+			align-items: flex-start;
+			gap: 12px;
 		}
 
-		.logout-floating {
-			position: absolute;
-			top: 10px;
-			right: 10px;
+		.panel-logout {
 			min-height: 30px;
 			padding: 6px 10px;
 			font-size: 0.82rem;
 			opacity: 0.85;
+			flex-shrink: 0;
 		}
 
 		.greeting-row {
@@ -631,14 +631,16 @@
 
 	<main class="app hidden panel-screen" id="metricsApp">
 		<section class="panel left" id="panelConfig">
-			<div>
+			<div class="panel-heading">
+				<div>
 				<span class="badge">Meta Business + IA</span>
 				<h1>Painel de Metricas por Cliente</h1>
 				<p class="subtitle">Ambiente isolado por usuario, com token criptografado e clientes separados por conta.</p>
+				</div>
+				<button id="logoutBtn" class="btn btn-soft panel-logout" type="button">Sair</button>
 			</div>
 
-			<div class="client-box auth-box">
-				<button id="logoutBtn" class="btn btn-soft logout-floating" type="button">Sair</button>
+			<div class="client-box">
 				<div class="greeting-row">
 					<div id="authStatus" class="greeting">Olá, <span class="name">Usuario</span></div>
 					<button id="editDisplayNameBtn" class="btn btn-soft hidden" type="button">Alt</button>
