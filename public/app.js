@@ -269,16 +269,15 @@ function detectFunnelStage(row) {
 
 function computeExecutiveMetrics(rows, summary, periodDays) {
   const resultByType = {};
-  let totalResults = 0;
+  let totalResults = Number(summary.total_results || 0);
 
   rows.forEach((row) => {
     const type = row.result_type || "-";
-    const value = Number(row.results || row.leads || 0);
-    totalResults += value;
+    const value = Number(row.results || 0);
     resultByType[type] = (resultByType[type] || 0) + value;
   });
 
-  let dominantResultType = "-";
+  let dominantResultType = summary.result_type || "-";
   let dominantResultValue = 0;
   Object.entries(resultByType).forEach(([type, value]) => {
     if (value > dominantResultValue) {

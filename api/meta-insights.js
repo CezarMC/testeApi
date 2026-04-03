@@ -17,6 +17,10 @@ function toNumber(value) {
   return Number.isFinite(n) ? n : 0;
 }
 
+function safeNumber(value) {
+  return Math.max(0, toNumber(value));
+}
+
 function sumAction(actions, type) {
   if (!Array.isArray(actions)) return 0;
   const found = actions.find((item) => item.action_type === type);
@@ -45,6 +49,76 @@ const LEAD_ACTION_TYPES = [
 
 function getLeadCount(actions) {
   return sumActionsByTypes(actions, LEAD_ACTION_TYPES);
+}
+
+function aggregateActions(actions = []) {
+  const totals = {};
+  if (!Array.isArray(actions)) return totals;
+  actions.forEach((item) => {
+    if (!item || !item.action_type) return;
+    const key = String(item.action_type);
+    totals[key] = (totals[key] || 0) + safeNumber(item.value);
+  });
+  return totals;
+}
+
+function getPrimaryResultFromTotals(actionTotals = {}) {
+  const entries = Object.entries(actionTotals);
+  if (entries.length === 0) return { type: "-", value: 0 };
+
+  const priority = [
+    "lead",
+    "onsite_conversion.lead_grouped",
+    "offsite_conversion.fb_pixel_lead",
+    "onsite_web_lead",
+    "omni_lead",
+    "onsite_conversion.messaging_conversation_started_7d",
+    "onsite_conversion.messaging_first_reply",
+    "onsite_conversion.contact_total",
+    "submit_application",
+    "purchase",
+    "offsite_conversion.fb_pixel_purchase",
+    "complete_registration",
+    "initiate_checkout",
+    "add_to_cart",
+    "link_click"
+  ];
+
+  for (const type of priority) {
+    if (actionTotals[type] > 0) {
+      return { type, value: safeNumber(actionTotals[type]) };
+    }
+  }
+
+  const fallback = entries.sort((a, b) => safeNumber(b[1]) - safeNumber(a[1]))[0];
+  return { type: fallback ? fallback[0] : "-", value: fallback ? safeNumber(fallback[1]) : 0 };
+}
+
+function mergeActionTotals(base, extra) {
+  Object.entries(extra || {}).forEach(([key, value]) => {
+    base[key] = (base[key] || 0) + safeNumber(value);
+  });
+}
+
+function calcRowMetrics(row) {
+  const spend = safeNumber(row.spend);
+  const impressions = safeNumber(row.impressions);
+  const reach = safeNumber(row.reach);
+  const clicks = safeNumber(row.clicks);
+  const leads = safeNumber(getLeadCount(row.actions));
+
+  return {
+    spend,
+    impressions,
+    reach,
+    clicks,
+    leads,
+    ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
+    cpc: clicks > 0 ? spend / clicks : 0,
+    cpm: impressions > 0 ? (spend / impressions) * 1000 : 0,
+    frequency: reach > 0 ? impressions / reach : 0,
+    cpl: leads > 0 ? spend / leads : 0
+  };
 }
 
 function getPrimaryResult(actions) {
@@ -205,29 +279,49 @@ module.exports = async function handler(request, response) {
     }
 
     const rows = Array.isArray(metaData.data) ? metaData.data : [];
-    const summary = rows.reduce(
+
+    const normalizedRows = rows.map((row) => {
+      const metrics = calcRowMetrics(row);
+      const actionTotals = aggregateActions(row.actions);
+      const primaryResult = getPrimaryResultFromTotals(actionTotals);
+      return {
+        raw: row,
+        metrics,
+        actionTotals,
+        primaryResult
+      };
+    });
+
+    const summary = normalizedRows.reduce(
       (acc, row) => {
-        acc.spend += toNumber(row.spend);
-        acc.impressions += toNumber(row.impressions);
-        acc.reach += toNumber(row.reach);
-        acc.clicks += toNumber(row.clicks);
-        acc.leads += getLeadCount(row.actions);
+        acc.spend += row.metrics.spend;
+        acc.impressions += row.metrics.impressions;
+        acc.reach += row.metrics.reach;
+        acc.clicks += row.metrics.clicks;
+        acc.leads += row.metrics.leads;
+        mergeActionTotals(acc.actionTotals, row.actionTotals);
         return acc;
       },
-      { spend: 0, impressions: 0, reach: 0, clicks: 0, leads: 0 }
+      { spend: 0, impressions: 0, reach: 0, clicks: 0, leads: 0, actionTotals: {} }
     );
 
     summary.ctr = summary.impressions > 0 ? (summary.clicks / summary.impressions) * 100 : 0;
     summary.cpc = summary.clicks > 0 ? summary.spend / summary.clicks : 0;
+    summary.cpm = summary.impressions > 0 ? (summary.spend / summary.impressions) * 1000 : 0;
+    summary.frequency = summary.reach > 0 ? summary.impressions / summary.reach : 0;
     summary.cpl = summary.leads > 0 ? summary.spend / summary.leads : 0;
+    const primarySummaryResult = getPrimaryResultFromTotals(summary.actionTotals);
+    summary.result_type = primarySummaryResult.type;
+    summary.total_results = primarySummaryResult.value;
 
     const adMediaMap = level === "ad"
       ? await fetchAdMediaMap(apiVersion, accessToken, rows.map((row) => String(row.ad_id || "")))
       : {};
 
-    const topRows = rows
-      .map((row) => {
-        const primaryResult = getPrimaryResult(row.actions);
+    const topRows = normalizedRows
+      .map((normalized) => {
+        const row = normalized.raw;
+        const primaryResult = normalized.primaryResult;
         const media = adMediaMap[String(row.ad_id || "")] || {};
         return {
           campaign_id: row.campaign_id || "-",
@@ -238,15 +332,16 @@ module.exports = async function handler(request, response) {
           ad_name: row.ad_name || "-",
           level,
           item_type: level === "campaign" ? "Campanha" : level === "adset" ? "Conjunto" : "Anuncio",
-          spend: toNumber(row.spend),
-          clicks: toNumber(row.clicks),
-          impressions: toNumber(row.impressions),
-          reach: toNumber(row.reach),
-          ctr: toNumber(row.ctr),
-          cpc: toNumber(row.cpc),
-          cpm: toNumber(row.cpm),
-          frequency: toNumber(row.frequency),
-          leads: getLeadCount(row.actions),
+          spend: normalized.metrics.spend,
+          clicks: normalized.metrics.clicks,
+          impressions: normalized.metrics.impressions,
+          reach: normalized.metrics.reach,
+          ctr: normalized.metrics.ctr,
+          cpc: normalized.metrics.cpc,
+          cpm: normalized.metrics.cpm,
+          frequency: normalized.metrics.frequency,
+          cpl: normalized.metrics.cpl,
+          leads: normalized.metrics.leads,
           result_type: primaryResult.type,
           results: primaryResult.value,
           creative_id: media.creative_id || null,
