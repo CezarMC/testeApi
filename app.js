@@ -291,23 +291,28 @@ function detectFunnelStage(row) {
 }
 
 function computeExecutiveMetrics(rows, summary, periodDays) {
-  const resultByType = {};
+  const hasFocus = Boolean(summary && summary.focus_action_type);
   let totalResults = Number(summary.total_results || 0);
-
-  rows.forEach((row) => {
-    const type = row.result_type || "-";
-    const value = Number(row.results || 0);
-    resultByType[type] = (resultByType[type] || 0) + value;
-  });
-
   let dominantResultType = summary.result_type || "-";
-  let dominantResultValue = 0;
-  Object.entries(resultByType).forEach(([type, value]) => {
-    if (value > dominantResultValue) {
-      dominantResultValue = value;
-      dominantResultType = type;
-    }
-  });
+  let dominantResultValue = totalResults;
+
+  if (!hasFocus) {
+    const resultByType = {};
+    rows.forEach((row) => {
+      const type = row.result_type || "-";
+      const value = Number(row.results || 0);
+      resultByType[type] = (resultByType[type] || 0) + value;
+    });
+    dominantResultType = summary.result_type || "-";
+    dominantResultValue = 0;
+    Object.entries(resultByType).forEach(([type, value]) => {
+      if (value > dominantResultValue) {
+        dominantResultValue = value;
+        dominantResultType = type;
+      }
+    });
+    totalResults = Number(summary.total_results || dominantResultValue || 0);
+  }
 
   const reach = Number(summary.reach || 0);
   const impressions = Number(summary.impressions || 0);
@@ -336,7 +341,7 @@ function updateExecutiveBlocks(rows, summary, context = {}, dateStart, dateEnd) 
   kResultTypeEl.textContent = normalizeResultType(exec.dominantResultType);
   kDailySpendEl.textContent = brMoney(exec.dailySpend);
 
-  const objectiveText = `Período analisado: ${periodDays} dia(s). Foco principal em ${normalizeResultType(exec.dominantResultType)} com ${brInt(exec.dominantResultValue)} resultado(s). Público atingido: ${brInt(exec.reach)} e ${brInt(exec.impressions)} impressões.`;
+  const objectiveText = `Período analisado: ${periodDays} dia(s). Foco principal em ${normalizeResultType(exec.dominantResultType)} com ${brInt(exec.totalResults)} resultado(s). Público atingido: ${brInt(exec.reach)} e ${brInt(exec.impressions)} impressões.`;
   objectiveSummaryEl.textContent = objectiveText;
 
   const stageAgg = {
