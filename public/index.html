@@ -41,6 +41,7 @@
 			border-radius: 16px;
 			border: 1px solid rgba(10, 36, 61, 0.12);
 			box-shadow: 0 14px 32px rgba(3, 20, 36, 0.2);
+			transition: box-shadow 220ms ease, transform 220ms ease;
 		}
 
 		.entry,
@@ -208,6 +209,13 @@
 			background: #f4f9fe;
 			display: grid;
 			gap: 10px;
+			transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+		}
+
+		.client-box:hover {
+			transform: translateY(-1px);
+			box-shadow: 0 10px 22px rgba(10, 38, 64, 0.08);
+			border-color: rgba(10, 88, 140, 0.26);
 		}
 
 		.panel-heading {
@@ -712,6 +720,13 @@
 			border-radius: 12px;
 			background: #ffffff;
 			padding: 10px;
+			transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+		}
+
+		.card:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 10px 20px rgba(7, 33, 56, 0.1);
+			border-color: rgba(10, 96, 157, 0.28);
 		}
 
 		.card .k { font-size: 0.76rem; text-transform: uppercase; color: var(--muted); font-weight: 700; }
@@ -787,7 +802,38 @@
 			background: #fff;
 			border-radius: 12px;
 			padding: 10px;
+			transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
 		}
+
+		.client-card:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 10px 18px rgba(8, 34, 58, 0.1);
+			border-color: rgba(10, 96, 157, 0.28);
+		}
+
+		.app.screen-enter .left > *,
+		.app.screen-enter .right > *,
+		.client-view.screen-enter > * {
+			opacity: 0;
+			transform: translateY(10px);
+			animation: sectionLiftIn 360ms ease forwards;
+		}
+
+		.app.screen-enter .left > *:nth-child(1),
+		.app.screen-enter .right > *:nth-child(1),
+		.client-view.screen-enter > *:nth-child(1) { animation-delay: 40ms; }
+		.app.screen-enter .left > *:nth-child(2),
+		.app.screen-enter .right > *:nth-child(2),
+		.client-view.screen-enter > *:nth-child(2) { animation-delay: 90ms; }
+		.app.screen-enter .left > *:nth-child(3),
+		.app.screen-enter .right > *:nth-child(3),
+		.client-view.screen-enter > *:nth-child(3) { animation-delay: 140ms; }
+		.app.screen-enter .left > *:nth-child(4),
+		.app.screen-enter .right > *:nth-child(4),
+		.client-view.screen-enter > *:nth-child(4) { animation-delay: 190ms; }
+		.app.screen-enter .left > *:nth-child(5),
+		.app.screen-enter .right > *:nth-child(5),
+		.client-view.screen-enter > *:nth-child(5) { animation-delay: 240ms; }
 
 		.client-card .k { font-size: 0.74rem; text-transform: uppercase; color: var(--muted); font-weight: 700; }
 		.client-card .v { font-size: 1.1rem; font-weight: 700; margin-top: 6px; }
@@ -823,6 +869,11 @@
 			to { opacity: 1; transform: translateY(0); }
 		}
 
+		@keyframes sectionLiftIn {
+			from { opacity: 0; transform: translateY(10px); }
+			to { opacity: 1; transform: translateY(0); }
+		}
+
 		@keyframes spin {
 			from { transform: rotate(0deg); }
 			to { transform: rotate(360deg); }
@@ -853,6 +904,21 @@
 			.screen-enter,
 			.card-enter {
 				animation: none !important;
+			}
+
+			.app.screen-enter .left > *,
+			.app.screen-enter .right > *,
+			.client-view.screen-enter > * {
+				animation: none !important;
+				opacity: 1;
+				transform: none;
+			}
+
+			.panel,
+			.client-box,
+			.card,
+			.client-card {
+				transition: none !important;
 			}
 
 			.btn,
