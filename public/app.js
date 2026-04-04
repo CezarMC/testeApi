@@ -626,6 +626,13 @@ function closeLinkedAccountsMenu() {
   linkedAccountsMenuEl.classList.add("hidden");
 }
 
+function maybeCloseLinkedAccountsMenu(target) {
+  if (!linkedAccountsBoxEl || !linkedAccountsMenuEl) return;
+  if (linkedAccountsMenuEl.classList.contains("hidden")) return;
+  if (linkedAccountsBoxEl.contains(target)) return;
+  closeLinkedAccountsMenu();
+}
+
 async function loadAvailableAccounts() {
   const result = await apiPost("/api/user-token", { action: "accounts", apiVersion: apiVersionEl.value.trim() || "v25.0" });
   if (!result.ok) {
@@ -1877,15 +1884,15 @@ function bindEvents() {
   if (linkedAccountsSearchEl) {
     linkedAccountsSearchEl.addEventListener("input", () => renderLinkedAccountsList(linkedAccountsSearchEl.value));
   }
+  // Usa captura para fechar antes de controles nativos (como select) abrirem por cima.
+  document.addEventListener("pointerdown", (event) => {
+    maybeCloseLinkedAccountsMenu(event.target);
+  }, true);
   document.addEventListener("click", (event) => {
-    if (!linkedAccountsBoxEl || !linkedAccountsMenuEl) return;
-    if (linkedAccountsMenuEl.classList.contains("hidden")) return;
-    if (!linkedAccountsBoxEl.contains(event.target)) closeLinkedAccountsMenu();
+    maybeCloseLinkedAccountsMenu(event.target);
   });
   document.addEventListener("focusin", (event) => {
-    if (!linkedAccountsBoxEl || !linkedAccountsMenuEl) return;
-    if (linkedAccountsMenuEl.classList.contains("hidden")) return;
-    if (!linkedAccountsBoxEl.contains(event.target)) closeLinkedAccountsMenu();
+    maybeCloseLinkedAccountsMenu(event.target);
   });
   if (addLinkedAccountsBtnEl) addLinkedAccountsBtnEl.addEventListener("click", addSelectedLinkedAccounts);
   document.getElementById("saveClientBtn").addEventListener("click", saveClient);
