@@ -693,6 +693,57 @@
 			to { opacity: 1; transform: translateY(0); }
 		}
 
+		@media (min-width: 1001px) {
+			.entry,
+			.recover,
+			.reset {
+				max-width: 940px;
+				padding: 28px;
+				gap: 16px;
+			}
+
+			.entry #signupCard,
+			.entry #loginCard.login-quick,
+			.recover .client-box,
+			.reset .client-box {
+				width: min(100%, 680px);
+				justify-self: center;
+			}
+
+			.entry #signupCard {
+				padding: 16px 18px;
+				gap: 12px;
+			}
+
+			.entry .entry-cta .btn,
+			.entry .entry-open-panel {
+				max-width: 680px;
+			}
+
+			.entry #signupCard .rules,
+			.entry #signupCard .pass-meter,
+			.entry #signupCard .policy,
+			.reset .rules,
+			.reset .pass-meter,
+			.reset .policy {
+				max-width: 100%;
+			}
+
+			input,
+			select,
+			button {
+				font-size: 1rem;
+			}
+
+			button {
+				min-height: 46px;
+			}
+
+			.entry .brand-sub {
+				font-size: 1rem;
+			}
+		}
+
 		@media (max-width: 1000px) {
 			.app { grid-template-columns: 1fr; }
 			.row, .row-3, .cards { grid-template-columns: 1fr; }
