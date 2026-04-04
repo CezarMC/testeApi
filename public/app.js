@@ -1387,34 +1387,6 @@ async function addSelectedLinkedAccounts() {
   setMainNextStep("escolha o cliente no campo Cliente para metricas e clique em Atualizar metricas.");
 }
 
-async function removeSelectedLinkedAccounts() {
-  const selectedOptions = Array.from(availableAccountSelectEl.selectedOptions || []).filter((option) => option.value);
-  if (selectedOptions.length === 0) {
-    setStatus("warn", "Selecione uma ou mais contas para remover.");
-    return;
-  }
-
-  const currentClients = Array.from(clientSelectEl.options || []).filter((option) => option.value);
-  const selectedAccounts = new Set(selectedOptions.map((option) => normalizeAccountId(option.dataset.account || option.value)));
-  const clientsToRemove = currentClients.filter((option) => selectedAccounts.has(normalizeAccountId(option.dataset.account)));
-
-  if (clientsToRemove.length === 0) {
-    setStatus("warn", "Nenhuma das contas selecionadas esta salva como cliente.");
-    return;
-  }
-
-  let removedCount = 0;
-  for (const option of clientsToRemove) {
-    const result = await apiPost("/api/user-clients", { action: "remove", clientId: option.value });
-    if (result.ok) removedCount += 1;
-  }
-
-  await loadClients();
-  clearMetrics();
-  setStatus("ok", `${removedCount} cliente(s) removido(s) da selecao.`);
-  setMainNextStep("selecione outra conta para adicionar ou atualizar metricas.");
-}
-
 async function saveClient() {
   const payload = {
     action: "save",
@@ -1926,8 +1898,6 @@ function bindEvents() {
     maybeCloseLinkedAccountsMenu(event.target);
   });
   if (addLinkedAccountsBtnEl) addLinkedAccountsBtnEl.addEventListener("click", addSelectedLinkedAccounts);
-  const removeLinkedAccountsBtnEl = document.getElementById("removeLinkedAccountsBtn");
-  if (removeLinkedAccountsBtnEl) removeLinkedAccountsBtnEl.addEventListener("click", removeSelectedLinkedAccounts);
   document.getElementById("saveClientBtn").addEventListener("click", saveClient);
   document.getElementById("removeClientBtn").addEventListener("click", removeClient);
   if (removeMetricsClientBtnEl) {
