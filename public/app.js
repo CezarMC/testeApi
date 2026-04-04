@@ -621,6 +621,11 @@ function renderAvailableAccounts(accounts) {
   updateLinkedAccountsToggleText();
 }
 
+function closeLinkedAccountsMenu() {
+  if (!linkedAccountsMenuEl) return;
+  linkedAccountsMenuEl.classList.add("hidden");
+}
+
 async function loadAvailableAccounts() {
   const result = await apiPost("/api/user-token", { action: "accounts", apiVersion: apiVersionEl.value.trim() || "v25.0" });
   if (!result.ok) {
@@ -1875,13 +1880,19 @@ function bindEvents() {
   document.addEventListener("click", (event) => {
     if (!linkedAccountsBoxEl || !linkedAccountsMenuEl) return;
     if (linkedAccountsMenuEl.classList.contains("hidden")) return;
-    if (!linkedAccountsBoxEl.contains(event.target)) linkedAccountsMenuEl.classList.add("hidden");
+    if (!linkedAccountsBoxEl.contains(event.target)) closeLinkedAccountsMenu();
+  });
+  document.addEventListener("focusin", (event) => {
+    if (!linkedAccountsBoxEl || !linkedAccountsMenuEl) return;
+    if (linkedAccountsMenuEl.classList.contains("hidden")) return;
+    if (!linkedAccountsBoxEl.contains(event.target)) closeLinkedAccountsMenu();
   });
   if (addLinkedAccountsBtnEl) addLinkedAccountsBtnEl.addEventListener("click", addSelectedLinkedAccounts);
   document.getElementById("saveClientBtn").addEventListener("click", saveClient);
   document.getElementById("removeClientBtn").addEventListener("click", removeClient);
   if (removeMetricsClientBtnEl) {
     removeMetricsClientBtnEl.addEventListener("click", () => {
+      closeLinkedAccountsMenu();
       if (metricsClientSelectEl && metricsClientSelectEl.value) {
         clientSelectEl.value = metricsClientSelectEl.value;
       }
@@ -1914,7 +1925,10 @@ function bindEvents() {
     if (selectedCount > 0) setMainNextStep(`${selectedCount} conta(s) marcada(s). Clique em Adicionar selecionadas.`);
   });
   if (metricsClientSelectEl) {
+    metricsClientSelectEl.addEventListener("mousedown", closeLinkedAccountsMenu);
+    metricsClientSelectEl.addEventListener("focus", closeLinkedAccountsMenu);
     metricsClientSelectEl.addEventListener("change", () => {
+      closeLinkedAccountsMenu();
       const option = metricsClientSelectEl.options[metricsClientSelectEl.selectedIndex];
       if (!option || !option.value) {
         updateMetricsClientRemoveState();
