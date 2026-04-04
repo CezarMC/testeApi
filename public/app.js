@@ -664,7 +664,7 @@ function openPanelScreen() {
 
 function getPasswordChecks(password) {
   return {
-    length: password.length >= 12,
+    length: password.length >= 8,
     upper: /[A-Z]/.test(password),
     lower: /[a-z]/.test(password),
     number: /\d/.test(password),
@@ -676,7 +676,7 @@ function getPasswordChecks(password) {
 function validateStrongPassword(password) {
   const checks = getPasswordChecks(password);
   const issues = [];
-  if (!checks.length) issues.push("minimo de 12 caracteres");
+  if (!checks.length) issues.push("minimo de 8 caracteres");
   if (!checks.upper) issues.push("1 letra maiuscula");
   if (!checks.lower) issues.push("1 letra minuscula");
   if (!checks.number) issues.push("1 numero");
@@ -701,7 +701,7 @@ function updatePolicy(inputEl, outputEl, rulesEl) {
   renderPasswordRules(rulesEl, checks);
   if (!password) {
     outputEl.className = "policy warn";
-    outputEl.textContent = "Senha deve ter 12+ caracteres, maiuscula, minuscula, numero e simbolo.";
+    outputEl.textContent = "Senha deve ter 8+ caracteres, maiuscula, minuscula, numero e simbolo.";
     return;
   }
   const check = validateStrongPassword(password);
