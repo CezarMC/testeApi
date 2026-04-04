@@ -2019,6 +2019,8 @@ function bindEvents() {
   document.getElementById("saveClientBtn").addEventListener("click", saveClient);
   document.getElementById("removeClientBtn").addEventListener("click", removeClient);
   document.getElementById("loadMetricsBtn").addEventListener("click", loadMetrics);
+  const loadMetricsPanelBtnEl = document.getElementById("loadMetricsPanelBtn");
+  if (loadMetricsPanelBtnEl) loadMetricsPanelBtnEl.addEventListener("click", loadMetrics);
   document.getElementById("clientViewBtn").addEventListener("click", openClientView);
   document.getElementById("exportPdfBtn").addEventListener("click", exportExecutivePdf);
   document.getElementById("loadAdviceBtn").addEventListener("click", loadAdvice);
