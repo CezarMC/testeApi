@@ -171,6 +171,7 @@ const resetConfirmEl = document.getElementById("resetConfirm");
 const resetRulesEl = document.getElementById("resetRules");
 const resetStrengthMeterEl = document.getElementById("resetStrengthMeter");
 const resetPolicyEl = document.getElementById("resetPolicy");
+const doLoginBtnEl = document.getElementById("doLoginBtn");
 const openPanelBtnEl = document.getElementById("openPanelBtn");
 
 const metaTokenEl = document.getElementById("metaToken");
@@ -637,10 +638,26 @@ async function loadAvailableAccounts() {
 function showOnly(screen) {
   [entryScreenEl, recoverScreenEl, resetScreenEl, metricsAppEl, clientViewScreenEl].forEach((el) => el.classList.add("hidden"));
   screen.classList.remove("hidden");
+  screen.classList.remove("screen-enter");
+  void screen.offsetWidth;
+  screen.classList.add("screen-enter");
 }
 
 function toggleAuthCard(card, show) {
+  if (!card) return;
   card.classList.toggle("hidden", !show);
+  if (show) {
+    card.classList.remove("card-enter");
+    void card.offsetWidth;
+    card.classList.add("card-enter");
+  }
+}
+
+function setLoginButtonLoading(loading) {
+  if (!doLoginBtnEl) return;
+  doLoginBtnEl.disabled = loading;
+  doLoginBtnEl.classList.toggle("is-loading", loading);
+  doLoginBtnEl.textContent = loading ? "Entrando..." : "Entrar";
 }
 
 function setSignupMode(active) {
@@ -1076,28 +1093,33 @@ async function signIn() {
     return;
   }
   let email = identifier;
-  if (!identifier.includes("@")) {
-    const parsed = parseDocument(identifier);
-    if (!parsed.ok) {
-      setEntryStatus("warn", "Use email valido ou CPF/CNPJ valido.");
-      return;
+  setLoginButtonLoading(true);
+  try {
+    if (!identifier.includes("@")) {
+      const parsed = parseDocument(identifier);
+      if (!parsed.ok) {
+        setEntryStatus("warn", "Use email valido ou CPF/CNPJ valido.");
+        return;
+      }
+      const resolved = await resolveEmailFromDocument(parsed.normalized);
+      if (!resolved.ok || !resolved.data?.email) {
+        setEntryStatus("err", "Login falhou. Verifique identificador e senha.");
+        return;
+      }
+      email = String(resolved.data.email || "").toLowerCase();
     }
-    const resolved = await resolveEmailFromDocument(parsed.normalized);
-    if (!resolved.ok || !resolved.data?.email) {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
       setEntryStatus("err", "Login falhou. Verifique identificador e senha.");
+      setEntryNextStep("confira e-mail/senha ou abra Recuperar senha.");
       return;
     }
-    email = String(resolved.data.email || "").toLowerCase();
+    setEntryStatus("ok", "Login realizado com sucesso.");
+    setEntryNextStep("clique em Abrir painel de metricas.");
+    toggleAuthCard(loginCardEl, false);
+  } finally {
+    setLoginButtonLoading(false);
   }
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) {
-    setEntryStatus("err", "Login falhou. Verifique identificador e senha.");
-    setEntryNextStep("confira e-mail/senha ou abra Recuperar senha.");
-    return;
-  }
-  setEntryStatus("ok", "Login realizado com sucesso.");
-  setEntryNextStep("clique em Abrir painel de metricas.");
-  toggleAuthCard(loginCardEl, false);
 }
 
 async function sendRecoveryEmail() {

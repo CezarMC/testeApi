@@ -494,6 +494,36 @@
 			border-radius: 12px;
 			min-height: 44px;
 			background: linear-gradient(140deg, #0a5fc0, #0b79d0);
+			position: relative;
+			overflow: hidden;
+		}
+
+		.entry .auth-main-btn.is-loading {
+			padding-left: 42px;
+			cursor: wait;
+			filter: saturate(0.95);
+		}
+
+		.entry .auth-main-btn.is-loading::before {
+			content: "";
+			position: absolute;
+			left: 16px;
+			top: 50%;
+			width: 16px;
+			height: 16px;
+			margin-top: -8px;
+			border: 2px solid rgba(255, 255, 255, 0.35);
+			border-top-color: #ffffff;
+			border-radius: 50%;
+			animation: spin 0.85s linear infinite;
+		}
+
+		.screen-enter {
+			animation: screenFadeIn 280ms ease;
+		}
+
+		.card-enter {
+			animation: cardSwapIn 260ms cubic-bezier(0.16, 1, 0.3, 1);
 		}
 
 		.entry .entry-link-btn {
@@ -783,6 +813,21 @@
 			100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.9; }
 		}
 
+		@keyframes screenFadeIn {
+			from { opacity: 0; transform: translateY(4px); }
+			to { opacity: 1; transform: translateY(0); }
+		}
+
+		@keyframes cardSwapIn {
+			from { opacity: 0; transform: translateY(10px); }
+			to { opacity: 1; transform: translateY(0); }
+		}
+
+		@keyframes spin {
+			from { transform: rotate(0deg); }
+			to { transform: rotate(360deg); }
+		}
+
 		@keyframes focusPulseRing {
 			0% { box-shadow: 0 0 0 0 rgba(11, 120, 218, 0.08), 0 0 0 4px rgba(11, 120, 218, 0.14); }
 			50% { box-shadow: 0 0 0 5px rgba(11, 120, 218, 0.07), 0 0 0 4px rgba(11, 120, 218, 0.16); }
@@ -801,6 +846,12 @@
 
 			.entry::before,
 			.entry input:focus {
+				animation: none !important;
+			}
+
+			.entry .auth-main-btn.is-loading::before,
+			.screen-enter,
+			.card-enter {
 				animation: none !important;
 			}
 
