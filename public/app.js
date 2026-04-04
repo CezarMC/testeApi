@@ -610,8 +610,10 @@ function renderAvailableAccounts(accounts) {
   accounts.forEach((account) => {
     const option = document.createElement("option");
     const numericId = String(account.accountId || account.id || "").trim();
+    const accountName = String(account.name || "Conta Meta").trim();
     option.value = numericId;
-    option.textContent = `${account.name} - act_${numericId}`;
+    option.textContent = `${accountName} - ${numericId}`;
+    option.dataset.name = accountName;
     option.dataset.account = numericId;
     option.dataset.apiVersion = apiVersionEl.value.trim() || "v25.0";
     if (selected.has(numericId)) option.selected = true;
@@ -1261,8 +1263,10 @@ function renderClients(clients) {
   if (metricsClientSelectEl) metricsClientSelectEl.innerHTML = "<option value=''>Selecione...</option>";
   uniqueClients.forEach((client) => {
     const option = document.createElement("option");
+    const clientName = String(client.name || "Cliente").trim();
     option.value = client.id;
-    option.textContent = `${client.name} - act_${client.adAccountId}`;
+    option.textContent = `${clientName} - ${client.adAccountId}`;
+    option.dataset.name = clientName;
     option.dataset.account = client.adAccountId;
     option.dataset.apiVersion = client.apiVersion;
     if (client.id === selected) option.selected = true;
@@ -1296,8 +1300,7 @@ function normalizeAccountId(value) {
 
 function getLinkedAccountPayload(option) {
   if (!option || !option.value) return null;
-  const label = String(option.textContent || "");
-  const name = (label.split(" - act_")[0] || label || "Conta Meta").trim();
+  const name = String(option.dataset.name || "Conta Meta").trim();
   return {
     name,
     adAccountId: String(option.dataset.account || option.value || "").trim(),
@@ -1318,7 +1321,7 @@ async function ensureClientFromLinkedAccount(option, opts = {}) {
   if (existingOption) {
     clientSelectEl.value = existingOption.value;
     if (metricsClientSelectEl) metricsClientSelectEl.value = existingOption.value;
-    clientNameEl.value = existingOption.textContent.split(" - ")[0] || "";
+    clientNameEl.value = existingOption.dataset.name || "";
     adAccountIdEl.value = existingOption.dataset.account || linked.adAccountId;
     apiVersionEl.value = existingOption.dataset.apiVersion || linked.apiVersion;
     if (!silent) {
@@ -1575,7 +1578,7 @@ async function loadMetrics() {
   updateTable(result.data.rows || []);
   updateExecutiveBlocks(result.data.rows || [], result.data.summary || {}, result.data.context || {}, dateStart, dateEnd);
   lastMetricsPayload = {
-    clientName: selected.textContent.split(" - ")[0] || "Cliente",
+    clientName: selected.dataset.name || "Cliente",
     reportType: reportTypeEl.value,
     agencyMetricFocus: agencyMetricFocusEl ? agencyMetricFocusEl.value : "lead",
     dateStart,
@@ -1920,7 +1923,7 @@ function bindEvents() {
     const option = clientSelectEl.options[clientSelectEl.selectedIndex];
     if (!option || !option.value) return;
     if (metricsClientSelectEl) metricsClientSelectEl.value = option.value;
-    clientNameEl.value = option.textContent.split(" - ")[0] || "";
+    clientNameEl.value = option.dataset.name || "";
     adAccountIdEl.value = option.dataset.account || "";
     apiVersionEl.value = option.dataset.apiVersion || "v25.0";
     clearMetrics();
@@ -1942,7 +1945,7 @@ function bindEvents() {
         return;
       }
       clientSelectEl.value = option.value;
-      clientNameEl.value = option.textContent.split(" - ")[0] || "";
+      clientNameEl.value = option.dataset.name || "";
       adAccountIdEl.value = option.dataset.account || "";
       apiVersionEl.value = option.dataset.apiVersion || "v25.0";
       clearMetrics();
