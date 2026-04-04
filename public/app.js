@@ -1865,6 +1865,15 @@ function bindEvents() {
   if (addLinkedAccountsBtnEl) addLinkedAccountsBtnEl.addEventListener("click", addSelectedLinkedAccounts);
   document.getElementById("saveClientBtn").addEventListener("click", saveClient);
   document.getElementById("removeClientBtn").addEventListener("click", removeClient);
+  const removeMetricsClientBtn = document.getElementById("removeMetricsClientBtn");
+  if (removeMetricsClientBtn) {
+    removeMetricsClientBtn.addEventListener("click", () => {
+      if (metricsClientSelectEl && metricsClientSelectEl.value) {
+        clientSelectEl.value = metricsClientSelectEl.value;
+      }
+      removeClient();
+    });
+  }
   document.getElementById("loadMetricsBtn").addEventListener("click", loadMetrics);
   document.getElementById("clientViewBtn").addEventListener("click", openClientView);
   document.getElementById("exportPdfBtn").addEventListener("click", exportExecutivePdf);
