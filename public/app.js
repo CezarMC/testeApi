@@ -1394,20 +1394,18 @@ async function removeSelectedLinkedAccounts() {
     return;
   }
 
-  const selectedAccounts = Array.from(new Set(
-    selectedOptions
-      .map((option) => normalizeAccountId(option.dataset.account || option.value))
-      .filter(Boolean)
-  ));
+  const currentClients = Array.from(clientSelectEl.options || []).filter((option) => option.value);
+  const selectedAccounts = new Set(selectedOptions.map((option) => normalizeAccountId(option.dataset.account || option.value)));
+  const clientsToRemove = currentClients.filter((option) => selectedAccounts.has(normalizeAccountId(option.dataset.account)));
 
-  if (selectedAccounts.length === 0) {
+  if (clientsToRemove.length === 0) {
     setStatus("warn", "Nenhuma das contas selecionadas esta salva como cliente.");
     return;
   }
 
   let removedCount = 0;
-  for (const adAccountId of selectedAccounts) {
-    const result = await apiPost("/api/user-clients", { action: "removeByAccount", adAccountId });
+  for (const option of clientsToRemove) {
+    const result = await apiPost("/api/user-clients", { action: "remove", clientId: option.value });
     if (result.ok) removedCount += 1;
   }
 
@@ -1415,27 +1413,6 @@ async function removeSelectedLinkedAccounts() {
   clearMetrics();
   setStatus("ok", `${removedCount} cliente(s) removido(s) da selecao.`);
   setMainNextStep("selecione outra conta para adicionar ou atualizar metricas.");
-}
-
-async function removeClientByAccount(adAccountId) {
-  const normalized = normalizeAccountId(adAccountId);
-  if (!normalized) {
-    setStatus("warn", "Selecione um cliente para remover.");
-    return;
-  }
-  const result = await apiPost("/api/user-clients", { action: "removeByAccount", adAccountId: normalized });
-  if (!result.ok) {
-    setStatus("err", result.data.error || "Erro ao remover cliente.");
-    return;
-  }
-  renderClients(result.data.clients || []);
-  clientNameEl.value = "";
-  adAccountIdEl.value = "";
-  apiVersionEl.value = "v25.0";
-  clearMetrics();
-  setStatus("", "Cliente removido.");
-  setMainNextStep("cadastre outro cliente ou selecione um existente.");
-  updateMetricsClientRemoveState();
 }
 
 async function saveClient() {
@@ -1467,13 +1444,23 @@ async function saveClient() {
 }
 
 async function removeClient() {
-  const selectedOption = clientSelectEl.options[clientSelectEl.selectedIndex];
-  const adAccountId = selectedOption ? selectedOption.dataset.account : "";
-  if (!clientSelectEl.value && !adAccountId) {
+  if (!clientSelectEl.value) {
     setStatus("warn", "Selecione um cliente para remover.");
     return;
   }
-  await removeClientByAccount(adAccountId);
+  const result = await apiPost("/api/user-clients", { action: "remove", clientId: clientSelectEl.value });
+  if (!result.ok) {
+    setStatus("err", result.data.error || "Erro ao remover cliente.");
+    return;
+  }
+  renderClients(result.data.clients || []);
+  clientNameEl.value = "";
+  adAccountIdEl.value = "";
+  apiVersionEl.value = "v25.0";
+  clearMetrics();
+  setStatus("", "Cliente removido.");
+  setMainNextStep("cadastre outro cliente ou selecione um existente.");
+  updateMetricsClientRemoveState();
 }
 
 function clearMetrics() {
@@ -1946,10 +1933,10 @@ function bindEvents() {
   if (removeMetricsClientBtnEl) {
     removeMetricsClientBtnEl.addEventListener("click", () => {
       closeLinkedAccountsMenu();
-      const option = metricsClientSelectEl
-        ? metricsClientSelectEl.options[metricsClientSelectEl.selectedIndex]
-        : null;
-      removeClientByAccount(option ? option.dataset.account : "");
+      if (metricsClientSelectEl && metricsClientSelectEl.value) {
+        clientSelectEl.value = metricsClientSelectEl.value;
+      }
+      removeClient();
     });
   }
   document.getElementById("loadMetricsBtn").addEventListener("click", loadMetrics);

@@ -127,38 +127,5 @@ module.exports = async function handler(request, response) {
     });
   }
 
-  if (action === "removeByAccount") {
-    const adAccountId = String(body.adAccountId || "").trim().replace(/^act_/, "");
-    if (!adAccountId || !/^\d+$/.test(adAccountId)) {
-      return json(response, 400, { error: "adAccountId obrigatório e numérico." });
-    }
-
-    const { error } = await admin
-      .from("user_clients")
-      .delete()
-      .eq("user_id", user.id)
-      .eq("ad_account_id", adAccountId);
-
-    if (error) {
-      return json(response, 500, { error: "Erro ao remover cliente por conta.", detail: error.message });
-    }
-
-    const { data } = await admin
-      .from("user_clients")
-      .select("id, name, ad_account_id, api_version")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: true });
-
-    return json(response, 200, {
-      ok: true,
-      clients: (data || []).map((item) => ({
-        id: item.id,
-        name: item.name,
-        adAccountId: item.ad_account_id,
-        apiVersion: item.api_version
-      }))
-    });
-  }
-
-  return json(response, 400, { error: "Ação inválida. Use list, save, remove ou removeByAccount." });
+  return json(response, 400, { error: "Ação inválida. Use list, save ou remove." });
 };
