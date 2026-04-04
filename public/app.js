@@ -739,18 +739,9 @@ function updatePolicy(inputEl, outputEl, rulesEl, meterEl) {
   const checks = getPasswordChecks(password);
   renderPasswordRules(rulesEl, checks);
   renderPasswordMeter(meterEl, checks, password);
-  if (!password) {
-    outputEl.className = "policy warn";
-    outputEl.textContent = "Senha deve ter 8+ caracteres, maiuscula, minuscula, numero e simbolo.";
-    return;
-  }
-  const check = validateStrongPassword(password);
-  if (check.ok) {
-    outputEl.className = "policy ok";
-    outputEl.textContent = "Senha forte. Pode continuar.";
-  } else {
-    outputEl.className = "policy err";
-    outputEl.textContent = `Falta: ${check.issues.join(", ")}.`;
+  if (outputEl) {
+    outputEl.className = "policy hidden";
+    outputEl.textContent = "";
   }
 }
 
