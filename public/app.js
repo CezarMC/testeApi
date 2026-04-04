@@ -171,7 +171,13 @@ const resetConfirmEl = document.getElementById("resetConfirm");
 const resetRulesEl = document.getElementById("resetRules");
 const resetStrengthMeterEl = document.getElementById("resetStrengthMeter");
 const resetPolicyEl = document.getElementById("resetPolicy");
-const removeMetricsClientBtnEl = document.getElementById("removeMetricsClientBtn");
+const metricsRemoveBoxEl = document.getElementById("metricsRemoveBox");
+const metricsRemoveToggleBtnEl = document.getElementById("metricsRemoveToggleBtn");
+const metricsRemoveMenuEl = document.getElementById("metricsRemoveMenu");
+const metricsRemoveSearchEl = document.getElementById("metricsRemoveSearch");
+const metricsRemoveListEl = document.getElementById("metricsRemoveList");
+const metricsRemoveSelectEl = document.getElementById("metricsRemoveSelect");
+const removeMetricsSelectedBtnEl = document.getElementById("removeMetricsSelectedBtn");
 const metricsClientHintEl = document.getElementById("metricsClientHint");
 const doLoginBtnEl = document.getElementById("doLoginBtn");
 const openPanelBtnEl = document.getElementById("openPanelBtn");
@@ -565,6 +571,94 @@ function updateLinkedAccountsToggleText() {
   linkedAccountsToggleBtnEl.textContent = selectedCount > 0
     ? `${selectedCount} conta(s) selecionada(s)`
     : "Selecionar contas...";
+}
+
+function getSelectedMetricsRemoveCount() {
+  if (!metricsRemoveSelectEl) return 0;
+  return Array.from(metricsRemoveSelectEl.selectedOptions || []).filter((option) => option.value).length;
+}
+
+function updateMetricsRemoveToggleText() {
+  if (!metricsRemoveToggleBtnEl || !metricsRemoveSelectEl) return;
+  const total = Array.from(metricsRemoveSelectEl.options || []).filter((option) => option.value).length;
+  const selectedCount = getSelectedMetricsRemoveCount();
+  if (!total) {
+    metricsRemoveToggleBtnEl.textContent = "Nenhum cliente disponível";
+    if (metricsClientHintEl) metricsClientHintEl.textContent = "Nenhum cliente salvo para remover.";
+    if (removeMetricsSelectedBtnEl) removeMetricsSelectedBtnEl.disabled = true;
+    return;
+  }
+  metricsRemoveToggleBtnEl.textContent = selectedCount > 0
+    ? `${selectedCount} cliente(s) selecionado(s)`
+    : "Selecionar clientes para remover...";
+  if (metricsClientHintEl) {
+    metricsClientHintEl.textContent = selectedCount > 0
+      ? "Clientes selecionados prontos para remover."
+      : "Selecione um ou mais clientes para remover.";
+  }
+  if (removeMetricsSelectedBtnEl) removeMetricsSelectedBtnEl.disabled = selectedCount === 0;
+}
+
+function renderMetricsRemoveList(filterText = "") {
+  if (!metricsRemoveListEl || !metricsRemoveSelectEl) return;
+  const query = String(filterText || "").trim().toLowerCase();
+  metricsRemoveListEl.innerHTML = "";
+
+  const options = Array.from(metricsRemoveSelectEl.options || []).filter((option) => option.value);
+  const filtered = query
+    ? options.filter((option) => String(option.textContent || "").toLowerCase().includes(query))
+    : options;
+
+  if (filtered.length === 0) {
+    metricsRemoveListEl.innerHTML = '<div class="hint" style="margin:0;">Nenhum cliente para este filtro.</div>';
+    return;
+  }
+
+  filtered.forEach((option) => {
+    const label = document.createElement("label");
+    label.className = "multi-item";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = option.selected;
+    checkbox.addEventListener("change", () => {
+      option.selected = checkbox.checked;
+      updateMetricsRemoveToggleText();
+    });
+
+    const text = document.createElement("span");
+    text.textContent = option.textContent || "Cliente";
+
+    label.appendChild(checkbox);
+    label.appendChild(text);
+    metricsRemoveListEl.appendChild(label);
+  });
+}
+
+function syncMetricsRemoveOptions() {
+  if (!metricsRemoveSelectEl || !metricsClientSelectEl) return;
+  const selected = new Set(Array.from(metricsRemoveSelectEl.selectedOptions || []).map((option) => option.value));
+  metricsRemoveSelectEl.innerHTML = "";
+  Array.from(metricsClientSelectEl.options || []).forEach((option) => {
+    if (!option.value) return;
+    const clone = option.cloneNode(true);
+    if (selected.has(clone.value)) clone.selected = true;
+    metricsRemoveSelectEl.appendChild(clone);
+  });
+  renderMetricsRemoveList(metricsRemoveSearchEl ? metricsRemoveSearchEl.value : "");
+  updateMetricsRemoveToggleText();
+}
+
+function closeMetricsRemoveMenu() {
+  if (!metricsRemoveMenuEl) return;
+  metricsRemoveMenuEl.classList.add("hidden");
+}
+
+function maybeCloseMetricsRemoveMenu(target) {
+  if (!metricsRemoveBoxEl || !metricsRemoveMenuEl) return;
+  if (metricsRemoveMenuEl.classList.contains("hidden")) return;
+  if (metricsRemoveBoxEl.contains(target)) return;
+  closeMetricsRemoveMenu();
 }
 
 function renderLinkedAccountsList(filterText = "") {
@@ -1280,18 +1374,7 @@ function renderClients(clients) {
   if (metricsClientSelectEl && !metricsClientSelectEl.value && metricsClientSelectEl.options.length > 1) {
     metricsClientSelectEl.selectedIndex = 1;
   }
-  updateMetricsClientRemoveState();
-}
-
-function updateMetricsClientRemoveState() {
-  if (!removeMetricsClientBtnEl) return;
-  const hasSelectedClient = Boolean(metricsClientSelectEl && metricsClientSelectEl.value);
-  removeMetricsClientBtnEl.disabled = !hasSelectedClient;
-  if (metricsClientHintEl) {
-    metricsClientHintEl.textContent = hasSelectedClient
-      ? "Cliente selecionado pronto para remover."
-      : "Selecione um cliente para remover.";
-  }
+  syncMetricsRemoveOptions();
 }
 
 function normalizeAccountId(value) {
@@ -1432,7 +1515,26 @@ async function removeClient() {
   clearMetrics();
   setStatus("", "Cliente removido.");
   setMainNextStep("cadastre outro cliente ou selecione um existente.");
-  updateMetricsClientRemoveState();
+}
+
+async function removeSelectedMetricsClients() {
+  const selectedOptions = Array.from(metricsRemoveSelectEl?.selectedOptions || []).filter((option) => option.value);
+  if (selectedOptions.length === 0) {
+    setStatus("warn", "Selecione um ou mais clientes para remover.");
+    return;
+  }
+
+  let removedCount = 0;
+  for (const option of selectedOptions) {
+    const result = await apiPost("/api/user-clients", { action: "remove", clientId: option.value });
+    if (result.ok) removedCount += 1;
+  }
+
+  await loadClients();
+  clearMetrics();
+  closeMetricsRemoveMenu();
+  setStatus("ok", `${removedCount} cliente(s) removido(s).`);
+  setMainNextStep("selecione outro cliente para atualizar metricas.");
 }
 
 function clearMetrics() {
@@ -1890,25 +1992,32 @@ function bindEvents() {
   // Usa captura para fechar antes de controles nativos (como select) abrirem por cima.
   document.addEventListener("pointerdown", (event) => {
     maybeCloseLinkedAccountsMenu(event.target);
+    maybeCloseMetricsRemoveMenu(event.target);
   }, true);
   document.addEventListener("click", (event) => {
     maybeCloseLinkedAccountsMenu(event.target);
+    maybeCloseMetricsRemoveMenu(event.target);
   });
   document.addEventListener("focusin", (event) => {
     maybeCloseLinkedAccountsMenu(event.target);
+    maybeCloseMetricsRemoveMenu(event.target);
   });
   if (addLinkedAccountsBtnEl) addLinkedAccountsBtnEl.addEventListener("click", addSelectedLinkedAccounts);
-  document.getElementById("saveClientBtn").addEventListener("click", saveClient);
-  document.getElementById("removeClientBtn").addEventListener("click", removeClient);
-  if (removeMetricsClientBtnEl) {
-    removeMetricsClientBtnEl.addEventListener("click", () => {
-      closeLinkedAccountsMenu();
-      if (metricsClientSelectEl && metricsClientSelectEl.value) {
-        clientSelectEl.value = metricsClientSelectEl.value;
+  if (metricsRemoveToggleBtnEl) {
+    metricsRemoveToggleBtnEl.addEventListener("click", () => {
+      if (!metricsRemoveMenuEl) return;
+      metricsRemoveMenuEl.classList.toggle("hidden");
+      if (!metricsRemoveMenuEl.classList.contains("hidden") && metricsRemoveSearchEl) {
+        metricsRemoveSearchEl.focus();
       }
-      removeClient();
     });
   }
+  if (metricsRemoveSearchEl) {
+    metricsRemoveSearchEl.addEventListener("input", () => renderMetricsRemoveList(metricsRemoveSearchEl.value));
+  }
+  if (removeMetricsSelectedBtnEl) removeMetricsSelectedBtnEl.addEventListener("click", removeSelectedMetricsClients);
+  document.getElementById("saveClientBtn").addEventListener("click", saveClient);
+  document.getElementById("removeClientBtn").addEventListener("click", removeClient);
   document.getElementById("loadMetricsBtn").addEventListener("click", loadMetrics);
   document.getElementById("clientViewBtn").addEventListener("click", openClientView);
   document.getElementById("exportPdfBtn").addEventListener("click", exportExecutivePdf);
@@ -1941,7 +2050,7 @@ function bindEvents() {
       closeLinkedAccountsMenu();
       const option = metricsClientSelectEl.options[metricsClientSelectEl.selectedIndex];
       if (!option || !option.value) {
-        updateMetricsClientRemoveState();
+        updateMetricsRemoveToggleText();
         return;
       }
       clientSelectEl.value = option.value;
@@ -1950,10 +2059,10 @@ function bindEvents() {
       apiVersionEl.value = option.dataset.apiVersion || "v25.0";
       clearMetrics();
       setMainNextStep("cliente definido. Agora clique em Atualizar metricas.");
-      updateMetricsClientRemoveState();
+      updateMetricsRemoveToggleText();
     });
   }
-  updateMetricsClientRemoveState();
+  updateMetricsRemoveToggleText();
   document.querySelectorAll("#periodChips .chip").forEach((chip) => {
     chip.addEventListener("click", () => {
       document.querySelectorAll("#periodChips .chip").forEach((item) => item.classList.remove("active"));

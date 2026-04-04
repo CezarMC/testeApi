@@ -1211,9 +1211,17 @@
 				<div class="field" style="margin-bottom:10px;">
 					<label for="metricsClientSelect">Cliente para métricas</label>
 					<select id="metricsClientSelect"><option value="">Selecione...</option></select>
+					<div id="metricsRemoveBox" class="multi-box" style="margin-top:8px;">
+						<button id="metricsRemoveToggleBtn" class="multi-toggle" type="button">Selecionar clientes para remover...</button>
+						<div id="metricsRemoveMenu" class="multi-menu hidden">
+							<input id="metricsRemoveSearch" class="multi-search" type="text" placeholder="Buscar cliente..." />
+							<div id="metricsRemoveList" class="multi-list"></div>
+						</div>
+					</div>
+					<select id="metricsRemoveSelect" class="hidden" multiple size="6"></select>
 					<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-top:8px;">
-						<p id="metricsClientHint" class="hint" style="margin:0;">Selecione um cliente para remover.</p>
-						<button id="removeMetricsClientBtn" class="btn btn-soft btn-sm" type="button">Remover selecionado</button>
+						<p id="metricsClientHint" class="hint" style="margin:0;">Selecione um ou mais clientes para remover.</p>
+						<button id="removeMetricsSelectedBtn" class="btn btn-soft btn-sm" type="button">Remover selecionados</button>
 					</div>
 				</div>
 				<div style="display:flex; gap:12px; align-items:end; flex-wrap:wrap;">
