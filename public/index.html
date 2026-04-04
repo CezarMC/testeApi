@@ -537,6 +537,49 @@
 		.policy.warn { color: var(--warn); }
 		.policy.err { color: var(--err); }
 
+		.pass-meter {
+			display: grid;
+			gap: 6px;
+			max-width: 420px;
+			margin: 2px auto 0;
+		}
+
+		.pass-meter-track {
+			display: grid;
+			grid-template-columns: repeat(4, minmax(0, 1fr));
+			gap: 6px;
+		}
+
+		.pass-meter-segment {
+			height: 7px;
+			border-radius: 999px;
+			background: #dce8f2;
+			transition: background-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+		}
+
+		.pass-meter[data-level="1"] .pass-meter-segment.active { background: #d06a37; }
+		.pass-meter[data-level="2"] .pass-meter-segment.active { background: #d4a11f; }
+		.pass-meter[data-level="3"] .pass-meter-segment.active { background: #1d8cc2; }
+		.pass-meter[data-level="4"] .pass-meter-segment.active { background: #1f8f5f; }
+
+		.pass-meter[data-loading="true"] .pass-meter-segment.active {
+			animation: meterPulse 1.1s ease-in-out infinite;
+		}
+
+		.pass-meter-label {
+			font-size: 0.76rem;
+			font-weight: 700;
+			letter-spacing: 0.03em;
+			text-transform: uppercase;
+			color: #5a7288;
+		}
+
+		@keyframes meterPulse {
+			0% { transform: scaleX(1); box-shadow: 0 0 0 rgba(11, 120, 218, 0); }
+			50% { transform: scaleX(1.05); box-shadow: 0 0 8px rgba(11, 120, 218, 0.28); }
+			100% { transform: scaleX(1); box-shadow: 0 0 0 rgba(11, 120, 218, 0); }
+		}
+
 		.chips { display: flex; gap: 8px; flex-wrap: wrap; }
 		.chip {
 			border: 1px solid rgba(15, 41, 64, 0.2);
@@ -734,6 +777,15 @@
 				<li data-rule="symbol">Pelo menos 1 simbolo</li>
 				<li data-rule="noSpaces">Sem espacos</li>
 			</ul>
+			<div id="signupStrengthMeter" class="pass-meter" data-level="0" data-loading="false">
+				<div class="pass-meter-track">
+					<span class="pass-meter-segment"></span>
+					<span class="pass-meter-segment"></span>
+					<span class="pass-meter-segment"></span>
+					<span class="pass-meter-segment"></span>
+				</div>
+				<div class="pass-meter-label">Aguardando senha</div>
+			</div>
 			<p id="signupPolicy" class="policy warn">Senha deve ter 8+ caracteres, maiuscula, minuscula, numero e simbolo.</p>
 			<div class="actions">
 				<button id="doSignupBtn" class="btn btn-primary" type="button">Criar conta agora</button>
@@ -788,6 +840,15 @@
 				<li data-rule="symbol">Pelo menos 1 simbolo</li>
 				<li data-rule="noSpaces">Sem espacos</li>
 			</ul>
+			<div id="resetStrengthMeter" class="pass-meter" data-level="0" data-loading="false">
+				<div class="pass-meter-track">
+					<span class="pass-meter-segment"></span>
+					<span class="pass-meter-segment"></span>
+					<span class="pass-meter-segment"></span>
+					<span class="pass-meter-segment"></span>
+				</div>
+				<div class="pass-meter-label">Aguardando senha</div>
+			</div>
 			<p id="resetPolicy" class="policy warn">Senha deve ter 8+ caracteres, maiuscula, minuscula, numero e simbolo.</p>
 			<div class="actions">
 				<button id="doResetBtn" class="btn btn-primary" type="button">Salvar nova senha</button>

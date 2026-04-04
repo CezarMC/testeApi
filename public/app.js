@@ -161,6 +161,7 @@ const signupDocumentEl = document.getElementById("signupDocument");
 const signupPasswordEl = document.getElementById("signupPassword");
 const signupConfirmEl = document.getElementById("signupConfirm");
 const signupRulesEl = document.getElementById("signupRules");
+const signupStrengthMeterEl = document.getElementById("signupStrengthMeter");
 const signupPolicyEl = document.getElementById("signupPolicy");
 const loginEmailEl = document.getElementById("loginEmail");
 const loginPasswordEl = document.getElementById("loginPassword");
@@ -168,6 +169,7 @@ const recoverEmailEl = document.getElementById("recoverEmail");
 const resetPasswordEl = document.getElementById("resetPassword");
 const resetConfirmEl = document.getElementById("resetConfirm");
 const resetRulesEl = document.getElementById("resetRules");
+const resetStrengthMeterEl = document.getElementById("resetStrengthMeter");
 const resetPolicyEl = document.getElementById("resetPolicy");
 const openPanelBtnEl = document.getElementById("openPanelBtn");
 
@@ -695,10 +697,48 @@ function renderPasswordRules(listEl, checks) {
   });
 }
 
-function updatePolicy(inputEl, outputEl, rulesEl) {
+function renderPasswordMeter(meterEl, checks, password) {
+  if (!meterEl) return;
+  const segments = Array.from(meterEl.querySelectorAll(".pass-meter-segment"));
+  const labelEl = meterEl.querySelector(".pass-meter-label");
+  const score = Object.values(checks || {}).filter(Boolean).length;
+
+  let level = 0;
+  let loading = false;
+  let label = "Aguardando senha";
+
+  if (password) {
+    if (score <= 2) {
+      level = 1;
+      label = "Carregando seguranca";
+      loading = true;
+    } else if (score <= 4) {
+      level = 2;
+      label = "Senha em evolucao";
+      loading = true;
+    } else if (score <= 5) {
+      level = 3;
+      label = "Quase forte";
+      loading = true;
+    } else {
+      level = 4;
+      label = "Senha forte";
+    }
+  }
+
+  meterEl.dataset.level = String(level);
+  meterEl.dataset.loading = loading ? "true" : "false";
+  segments.forEach((segment, index) => {
+    segment.classList.toggle("active", index < level);
+  });
+  if (labelEl) labelEl.textContent = label;
+}
+
+function updatePolicy(inputEl, outputEl, rulesEl, meterEl) {
   const password = String(inputEl.value || "");
   const checks = getPasswordChecks(password);
   renderPasswordRules(rulesEl, checks);
+  renderPasswordMeter(meterEl, checks, password);
   if (!password) {
     outputEl.className = "policy warn";
     outputEl.textContent = "Senha deve ter 8+ caracteres, maiuscula, minuscula, numero e simbolo.";
@@ -1820,10 +1860,10 @@ function bindEvents() {
   document.getElementById("loadAdviceBtn").addEventListener("click", loadAdvice);
   document.getElementById("cvBackBtn").addEventListener("click", closeClientView);
   document.getElementById("cvPrintBtn").addEventListener("click", exportExecutivePdf);
-  signupPasswordEl.addEventListener("input", () => updatePolicy(signupPasswordEl, signupPolicyEl, signupRulesEl));
-  resetPasswordEl.addEventListener("input", () => updatePolicy(resetPasswordEl, resetPolicyEl, resetRulesEl));
-  updatePolicy(signupPasswordEl, signupPolicyEl, signupRulesEl);
-  updatePolicy(resetPasswordEl, resetPolicyEl, resetRulesEl);
+  signupPasswordEl.addEventListener("input", () => updatePolicy(signupPasswordEl, signupPolicyEl, signupRulesEl, signupStrengthMeterEl));
+  resetPasswordEl.addEventListener("input", () => updatePolicy(resetPasswordEl, resetPolicyEl, resetRulesEl, resetStrengthMeterEl));
+  updatePolicy(signupPasswordEl, signupPolicyEl, signupRulesEl, signupStrengthMeterEl);
+  updatePolicy(resetPasswordEl, resetPolicyEl, resetRulesEl, resetStrengthMeterEl);
   clientSelectEl.addEventListener("change", () => {
     const option = clientSelectEl.options[clientSelectEl.selectedIndex];
     if (!option || !option.value) return;
