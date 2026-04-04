@@ -656,8 +656,6 @@ function toggleAuthCard(card, show) {
 function setLoginButtonLoading(loading) {
   if (!doLoginBtnEl) return;
   doLoginBtnEl.disabled = loading;
-  doLoginBtnEl.classList.toggle("is-loading", loading);
-  doLoginBtnEl.textContent = loading ? "Entrando..." : "Entrar";
 }
 
 function setSignupMode(active) {
