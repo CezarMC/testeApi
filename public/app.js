@@ -756,15 +756,41 @@ function parseDocument(value) {
   return { ok: false, normalized: digits, type: "" };
 }
 
+async function fetchWithTimeout(url, options = {}, timeoutMs = 3500) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function jsonFromResponse(res) {
+  try {
+    return await res.json();
+  } catch (_) {
+    return { error: "Resposta invalida." };
+  }
+}
+
+function timeoutResult() {
+  return { ok: false, status: 408, data: { error: "Tempo limite excedido. Tente novamente." } };
+}
+
 async function checkDocumentAvailability(document) {
-  const res = await fetch("/api/user-identity", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "check", document })
-  });
-  let data;
-  try { data = await res.json(); } catch (_) { data = { error: "Resposta invalida." }; }
-  return { ok: res.ok, status: res.status, data };
+  try {
+    const res = await fetchWithTimeout("/api/user-identity", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "check", document })
+    }, 3500);
+    const data = await jsonFromResponse(res);
+    return { ok: res.ok, status: res.status, data };
+  } catch (error) {
+    if (error && error.name === "AbortError") return timeoutResult();
+    return { ok: false, status: 502, data: { error: "Falha de rede ao validar documento." } };
+  }
 }
 
 async function registerUserIdentity(document) {
@@ -772,14 +798,18 @@ async function registerUserIdentity(document) {
 }
 
 async function resolveEmailFromDocument(document) {
-  const res = await fetch("/api/user-identity", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "resolve", document })
-  });
-  let data;
-  try { data = await res.json(); } catch (_) { data = { error: "Resposta invalida." }; }
-  return { ok: res.ok, status: res.status, data };
+  try {
+    const res = await fetchWithTimeout("/api/user-identity", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "resolve", document })
+    }, 3500);
+    const data = await jsonFromResponse(res);
+    return { ok: res.ok, status: res.status, data };
+  } catch (error) {
+    if (error && error.name === "AbortError") return timeoutResult();
+    return { ok: false, status: 502, data: { error: "Falha de rede ao localizar conta." } };
+  }
 }
 
 async function registerPendingIdentity(user) {
@@ -817,22 +847,40 @@ async function apiPost(url, payload) {
     setEntryStatus("warn", "Entre para continuar.");
     return { ok: false, blocked: true, data: { error: "Nao autenticado." } };
   }
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`
-    },
-    body: JSON.stringify(payload)
-  });
-  let data;
-  try { data = await res.json(); } catch (_) { data = { error: "Resposta invalida." }; }
-  return { ok: res.ok, status: res.status, data };
+  try {
+    const res = await fetchWithTimeout(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    }, 5000);
+    const data = await jsonFromResponse(res);
+    return { ok: res.ok, status: res.status, data };
+  } catch (error) {
+    if (error && error.name === "AbortError") return timeoutResult();
+    return { ok: false, status: 502, data: { error: "Falha de rede. Verifique sua conexao." } };
+  }
 }
 
 async function loadConfig() {
-  const res = await fetch("/api/app-config");
-  const data = await res.json();
+  let data;
+  try {
+    const res = await fetchWithTimeout("/api/app-config", {}, 3500);
+    data = await jsonFromResponse(res);
+    if (!res.ok) {
+      setEntryStatus("err", data.error || "Nao foi possivel carregar configuracao do servidor.");
+      setEntryNextStep("tente novamente em alguns segundos.");
+      return null;
+    }
+  } catch (error) {
+    const timeout = error && error.name === "AbortError";
+    setEntryStatus("err", timeout ? "Servidor demorou para responder." : "Falha de rede ao carregar configuracoes.");
+    setEntryNextStep("tente novamente em alguns segundos.");
+    return null;
+  }
+
   const cfg = data.config || {};
   if (!cfg.supabaseUrlConfigured || !cfg.supabaseAnonKeyConfigured || !cfg.supabaseServiceRoleConfigured || !cfg.encryptionConfigured) {
     setEntryStatus("err", "Configuracao incompleta no servidor.");
@@ -843,8 +891,11 @@ async function loadConfig() {
 
 async function initSupabase() {
   const data = await loadConfig();
+  if (!data) return;
   const publicConfig = data.publicConfig || {};
-  await initFacebookLogin(publicConfig);
+  initFacebookLogin(publicConfig).catch(() => {
+    // Mantem o app utilizavel mesmo se o SDK do Facebook falhar.
+  });
   if (!publicConfig.supabaseUrl || !publicConfig.supabaseAnonKey) {
     setEntryStatus("err", "Supabase nao configurado na Vercel.");
     setEntryNextStep("confira SUPABASE_URL e SUPABASE_ANON_KEY no projeto.");
@@ -911,12 +962,15 @@ async function updateAuthState(user) {
   if (openPanelBtnEl) openPanelBtnEl.disabled = false;
   await registerPendingIdentity(currentUser);
   if (!currentUser) return;
-  await checkTokenStatus();
-  await loadClients();
   showOnly(metricsAppEl);
   openPanelScreen();
-  setStatus("ok", "Painel de configuracoes aberto.");
-  setMainNextStep("salve o token Meta, cadastre um cliente e atualize as metricas.");
+  setStatus("ok", "Painel de configuracoes aberto. Carregando dados...");
+  setMainNextStep("sincronizando token Meta e clientes...");
+
+  Promise.allSettled([checkTokenStatus(), loadClients()]).then(() => {
+    if (!currentUser) return;
+    setStatus("ok", "Painel de configuracoes aberto.");
+  });
 }
 
 async function signUp() {
