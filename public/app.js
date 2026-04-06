@@ -192,7 +192,6 @@ const clientNameEl = document.getElementById("clientName");
 const adAccountIdEl = document.getElementById("adAccountId");
 const apiVersionEl = document.getElementById("apiVersion");
 const reportTypeEl = document.getElementById("reportType");
-const agencyMetricFocusEl = document.getElementById("agencyMetricFocus");
 const tableBodyEl = document.getElementById("tableBody");
 const adviceEl = document.getElementById("advice");
 const rawOutputEl = document.getElementById("rawOutput");
@@ -1665,7 +1664,7 @@ async function loadMetrics() {
     dateStart,
     dateEnd,
     reportType: reportTypeEl.value,
-    agencyMetricFocus: agencyMetricFocusEl ? agencyMetricFocusEl.value : "lead"
+    agencyMetricFocus: "lead"
   };
   rawOutputEl.textContent = "Carregando...";
   const result = await apiPost("/api/meta-insights", payload);
@@ -1682,7 +1681,7 @@ async function loadMetrics() {
   lastMetricsPayload = {
     clientName: selected.dataset.name || "Cliente",
     reportType: reportTypeEl.value,
-    agencyMetricFocus: agencyMetricFocusEl ? agencyMetricFocusEl.value : "lead",
+    agencyMetricFocus: "lead",
     dateStart,
     dateEnd,
     metrics: result.data.summary || {},
