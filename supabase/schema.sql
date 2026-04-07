@@ -26,13 +26,24 @@ create table if not exists public.user_identities (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.user_ai_keys (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  provider text not null check (provider in ('anthropic', 'openai', 'gemini')),
+  encrypted_key text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, provider)
+);
+
 create index if not exists user_clients_user_id_idx on public.user_clients (user_id);
+create index if not exists user_ai_keys_user_id_idx on public.user_ai_keys (user_id);
 
 alter table public.user_clients alter column api_version set default 'v25.0';
 
 alter table public.user_meta_tokens enable row level security;
 alter table public.user_clients enable row level security;
 alter table public.user_identities enable row level security;
+alter table public.user_ai_keys enable row level security;
 
 drop policy if exists "user_meta_tokens_select_own" on public.user_meta_tokens;
 create policy "user_meta_tokens_select_own" on public.user_meta_tokens
@@ -94,5 +105,26 @@ with check (auth.uid() = user_id);
 
 drop policy if exists "user_identities_delete_own" on public.user_identities;
 create policy "user_identities_delete_own" on public.user_identities
+for delete to authenticated
+using (auth.uid() = user_id);
+
+drop policy if exists "user_ai_keys_select_own" on public.user_ai_keys;
+create policy "user_ai_keys_select_own" on public.user_ai_keys
+for select to authenticated
+using (auth.uid() = user_id);
+
+drop policy if exists "user_ai_keys_insert_own" on public.user_ai_keys;
+create policy "user_ai_keys_insert_own" on public.user_ai_keys
+for insert to authenticated
+with check (auth.uid() = user_id);
+
+drop policy if exists "user_ai_keys_update_own" on public.user_ai_keys;
+create policy "user_ai_keys_update_own" on public.user_ai_keys
+for update to authenticated
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+drop policy if exists "user_ai_keys_delete_own" on public.user_ai_keys;
+create policy "user_ai_keys_delete_own" on public.user_ai_keys
 for delete to authenticated
 using (auth.uid() = user_id);

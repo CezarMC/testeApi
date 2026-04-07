@@ -1371,6 +1371,17 @@
 						</div>
 						<div id="aiProviderHint" class="hint" style="margin:0;">Cada usuário pode escolher a IA disponível no servidor.</div>
 					</div>
+					<div style="display:grid; gap:8px; border:1px solid #d9e5ef; border-radius:12px; padding:10px 12px; background:#f8fbff; margin-bottom:10px;">
+						<div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
+							<div style="flex:1; min-width:280px;">
+								<label for="aiProviderKeyInput">Key da IA do usuário</label>
+								<input id="aiProviderKeyInput" type="password" placeholder="Cole a key do provedor selecionado" autocomplete="off" />
+							</div>
+							<button id="saveAiProviderKeyBtn" class="btn btn-soft btn-sm" type="button">Salvar key</button>
+							<button id="deleteAiProviderKeyBtn" class="btn btn-soft btn-sm" type="button">Remover key</button>
+						</div>
+						<div id="aiProviderKeyStatus" class="status">Carregando status da key...</div>
+					</div>
 					<pre class="code" id="advice">As dicas aparecerao aqui.</pre>
 					<div id="adviceActions" style="margin-top:8px; display:flex; gap:8px;">
 						<button id="adviceUsefulBtn" class="btn btn-soft" type="button">Útil</button>

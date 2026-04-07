@@ -1,4 +1,5 @@
-const { getAuthenticatedUser } = require("./_lib/supabase");
+const { createAdminClient, getAuthenticatedUser } = require("./_lib/supabase");
+const { decryptText } = require("./_lib/crypto");
 const { json, parseJsonBody } = require("./_lib/http");
 
 function firstNameOf(value) {
@@ -20,8 +21,32 @@ function resolveProvider(requestedProvider) {
   return available[0] || "fallback";
 }
 
-async function callAnthropic(prompt) {
-  const apiKey = String(process.env.ANTHROPIC_API_KEY || "").trim();
+async function getUserProviderApiKey(userId, provider) {
+  if (!userId || !provider) return "";
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("user_ai_keys")
+    .select("encrypted_key")
+    .eq("user_id", userId)
+    .eq("provider", provider)
+    .maybeSingle();
+
+  if (error || !data || !data.encrypted_key) return "";
+  try {
+    return decryptText(data.encrypted_key);
+  } catch (_) {
+    return "";
+  }
+}
+
+function getServerProviderApiKey(provider) {
+  if (provider === "anthropic") return String(process.env.ANTHROPIC_API_KEY || "").trim();
+  if (provider === "openai") return String(process.env.OPENAI_API_KEY || "").trim();
+  if (provider === "gemini") return String(process.env.GEMINI_API_KEY || "").trim();
+  return "";
+}
+
+async function callAnthropic(prompt, apiKey) {
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -46,8 +71,7 @@ async function callAnthropic(prompt) {
   };
 }
 
-async function callOpenAI(prompt) {
-  const apiKey = String(process.env.OPENAI_API_KEY || "").trim();
+async function callOpenAI(prompt, apiKey) {
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -71,8 +95,7 @@ async function callOpenAI(prompt) {
   };
 }
 
-async function callGemini(prompt) {
-  const apiKey = String(process.env.GEMINI_API_KEY || "").trim();
+async function callGemini(prompt, apiKey) {
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
     method: "POST",
     headers: {
@@ -96,10 +119,10 @@ async function callGemini(prompt) {
   };
 }
 
-async function callProvider(provider, prompt) {
-  if (provider === "anthropic") return callAnthropic(prompt);
-  if (provider === "openai") return callOpenAI(prompt);
-  if (provider === "gemini") return callGemini(prompt);
+async function callProvider(provider, prompt, apiKey) {
+  if (provider === "anthropic") return callAnthropic(prompt, apiKey);
+  if (provider === "openai") return callOpenAI(prompt, apiKey);
+  if (provider === "gemini") return callGemini(prompt, apiKey);
   return { ok: false, provider: "fallback", text: "", error: { error: "Nenhum provedor configurado." } };
 }
 
@@ -250,9 +273,14 @@ module.exports = async function handler(request, response) {
   const rows = Array.isArray(body.rows) ? body.rows : [];
   const selectedCampaign = body.selectedCampaign && typeof body.selectedCampaign === "object" ? body.selectedCampaign : null;
   const requestedProvider = String(body.aiProvider || "").trim().toLowerCase();
-  const resolvedProvider = resolveProvider(requestedProvider);
+  const requestedOrDefaultProvider = requestedProvider || "anthropic";
+  const userProviderApiKey = await getUserProviderApiKey(user.id, requestedOrDefaultProvider);
+  const resolvedProvider = userProviderApiKey
+    ? requestedOrDefaultProvider
+    : resolveProvider(requestedProvider);
+  const providerApiKey = userProviderApiKey || getServerProviderApiKey(resolvedProvider);
 
-  if (resolvedProvider === "fallback") {
+  if (resolvedProvider === "fallback" || !providerApiKey) {
     return json(response, 200, {
       ok: true,
       mode: "fallback",
@@ -287,7 +315,7 @@ module.exports = async function handler(request, response) {
   ].join("\n");
 
   try {
-    const providerResponse = await callProvider(resolvedProvider, prompt);
+    const providerResponse = await callProvider(resolvedProvider, prompt, providerApiKey);
     if (!providerResponse.ok) {
       return json(response, 200, {
         ok: true,

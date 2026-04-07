@@ -132,6 +132,8 @@ let lastMetricsPayload = null;
 let metricsHistory = [];
 let campaignBreakdowns = [];
 let availableAiProviders = [];
+let serverConfiguredAiProviders = [];
+let userConfiguredAiProviders = [];
 
 const entryScreenEl = document.getElementById("entryScreen");
 const signupCardEl = document.getElementById("signupCard");
@@ -199,6 +201,10 @@ const adviceEl = document.getElementById("advice");
 const rawOutputEl = document.getElementById("rawOutput");
 const aiProviderSelectEl = document.getElementById("aiProviderSelect");
 const aiProviderHintEl = document.getElementById("aiProviderHint");
+const aiProviderKeyInputEl = document.getElementById("aiProviderKeyInput");
+const aiProviderKeyStatusEl = document.getElementById("aiProviderKeyStatus");
+const saveAiProviderKeyBtnEl = document.getElementById("saveAiProviderKeyBtn");
+const deleteAiProviderKeyBtnEl = document.getElementById("deleteAiProviderKeyBtn");
 const campaignDetailSelectEl = document.getElementById("campaignDetailSelect");
 const campaignDetailMetaEl = document.getElementById("campaignDetailMeta");
 const campaignDetailChartEl = document.getElementById("campaignDetailChart");
@@ -752,6 +758,105 @@ function formatAiProviderLabel(provider) {
   return provider || "IA";
 }
 
+function setAiKeyStatus(kind, message) {
+  if (!aiProviderKeyStatusEl) return;
+  aiProviderKeyStatusEl.className = "status";
+  if (kind) aiProviderKeyStatusEl.classList.add(kind);
+  aiProviderKeyStatusEl.textContent = message;
+}
+
+function getCurrentAiProviderSource(provider) {
+  if (userConfiguredAiProviders.includes(provider)) return "user";
+  if (serverConfiguredAiProviders.includes(provider)) return "server";
+  return "none";
+}
+
+function refreshAiKeyStatus() {
+  const provider = getResolvedAiProvider();
+  if (!provider) {
+    setAiKeyStatus("warn", "Selecione um provedor para configurar a key.");
+    if (deleteAiProviderKeyBtnEl) deleteAiProviderKeyBtnEl.disabled = true;
+    return;
+  }
+  const source = getCurrentAiProviderSource(provider);
+  if (source === "user") {
+    setAiKeyStatus("ok", `Key própria salva para ${formatAiProviderLabel(provider)}.`);
+    if (deleteAiProviderKeyBtnEl) deleteAiProviderKeyBtnEl.disabled = false;
+    return;
+  }
+  if (source === "server") {
+    setAiKeyStatus("warn", `${formatAiProviderLabel(provider)} está disponível pela key do servidor. Você pode salvar a sua própria se quiser.`);
+    if (deleteAiProviderKeyBtnEl) deleteAiProviderKeyBtnEl.disabled = true;
+    return;
+  }
+  setAiKeyStatus("warn", `Nenhuma key configurada para ${formatAiProviderLabel(provider)}. Salve a key do usuário para usar este provedor.`);
+  if (deleteAiProviderKeyBtnEl) deleteAiProviderKeyBtnEl.disabled = true;
+}
+
+async function loadUserAiKeyStatus() {
+  if (!currentUser) {
+    userConfiguredAiProviders = [];
+    refreshAiKeyStatus();
+    return;
+  }
+  const result = await apiPost("/api/user-ai-keys", { action: "status" });
+  if (!result.ok) {
+    userConfiguredAiProviders = [];
+    setAiKeyStatus("warn", result.data.error || "Nao foi possivel carregar o status das keys de IA.");
+    return;
+  }
+  availableAiProviders = Array.isArray(result.data.supportedProviders)
+    ? result.data.supportedProviders.map((item) => String(item || "").trim().toLowerCase()).filter(Boolean)
+    : availableAiProviders;
+  serverConfiguredAiProviders = Array.isArray(result.data.serverConfiguredProviders)
+    ? result.data.serverConfiguredProviders.map((item) => String(item || "").trim().toLowerCase()).filter(Boolean)
+    : serverConfiguredAiProviders;
+  userConfiguredAiProviders = Array.isArray(result.data.userConfiguredProviders)
+    ? result.data.userConfiguredProviders.map((item) => String(item || "").trim().toLowerCase()).filter(Boolean)
+    : [];
+  renderAiProviderOptions();
+  refreshAiKeyStatus();
+}
+
+async function saveUserAiKey() {
+  const provider = getResolvedAiProvider();
+  const apiKey = String(aiProviderKeyInputEl?.value || "").trim();
+  if (!provider) {
+    setStatus("warn", "Selecione um provedor antes de salvar a key.");
+    return;
+  }
+  if (!apiKey) {
+    setStatus("warn", "Cole a key do provedor selecionado antes de salvar.");
+    return;
+  }
+  const result = await apiPost("/api/user-ai-keys", { action: "save", provider, apiKey });
+  if (!result.ok) {
+    setStatus("err", result.data.error || "Nao foi possivel salvar a key da IA.");
+    refreshAiKeyStatus();
+    return;
+  }
+  if (aiProviderKeyInputEl) aiProviderKeyInputEl.value = "";
+  setStatus("ok", `Key da ${formatAiProviderLabel(provider)} salva com seguranca.`);
+  await loadUserAiKeyStatus();
+}
+
+async function deleteUserAiKey() {
+  const provider = getResolvedAiProvider();
+  if (!provider) {
+    setStatus("warn", "Selecione um provedor antes de remover a key.");
+    return;
+  }
+  const result = await apiPost("/api/user-ai-keys", { action: "delete", provider });
+  if (!result.ok) {
+    setStatus("err", result.data.error || "Nao foi possivel remover a key da IA.");
+    refreshAiKeyStatus();
+    return;
+  }
+  if (aiProviderKeyInputEl) aiProviderKeyInputEl.value = "";
+  setStatus("ok", `Key da ${formatAiProviderLabel(provider)} removida.`);
+  await loadUserAiKeyStatus();
+}
+
 function renderAiProviderOptions() {
   if (!aiProviderSelectEl) return;
   aiProviderSelectEl.innerHTML = "";
@@ -774,9 +879,12 @@ function renderAiProviderOptions() {
   aiProviderSelectEl.value = selected;
   aiProviderSelectEl.disabled = availableAiProviders.length <= 1;
   if (aiProviderHintEl) {
-    aiProviderHintEl.textContent = availableAiProviders.length <= 1
-      ? `Servidor com ${formatAiProviderLabel(selected)} disponível.`
-      : "Cada usuário pode escolher a IA disponível no servidor.";
+    const source = getCurrentAiProviderSource(selected);
+    aiProviderHintEl.textContent = source === "user"
+      ? `Este usuário está usando a própria key da ${formatAiProviderLabel(selected)}.`
+      : source === "server"
+        ? `${formatAiProviderLabel(selected)} está disponível via key do servidor.`
+        : "Cada usuário pode escolher a IA e salvar a própria key criptografada.";
   }
 }
 
@@ -1298,7 +1406,10 @@ async function loadConfig() {
   }
 
   const cfg = data.config || {};
-  availableAiProviders = Array.isArray(data.publicConfig?.availableAiProviders)
+  availableAiProviders = Array.isArray(data.publicConfig?.supportedAiProviders)
+    ? data.publicConfig.supportedAiProviders.map((item) => String(item || "").trim().toLowerCase()).filter(Boolean)
+    : [];
+  serverConfiguredAiProviders = Array.isArray(data.publicConfig?.availableAiProviders)
     ? data.publicConfig.availableAiProviders.map((item) => String(item || "").trim().toLowerCase()).filter(Boolean)
     : [];
   if (!cfg.supabaseUrlConfigured || !cfg.supabaseAnonKeyConfigured || !cfg.supabaseServiceRoleConfigured || !cfg.encryptionConfigured) {
@@ -1370,6 +1481,7 @@ async function updateAuthState(user) {
     clearAvailableAccounts();
     clientSelectEl.innerHTML = "<option value=''>Selecione...</option>";
     renderAiProviderOptions();
+    refreshAiKeyStatus();
     return;
   }
 
@@ -1380,6 +1492,7 @@ async function updateAuthState(user) {
   if (displayNameInputEl) displayNameInputEl.value = panelName;
   setDisplayNameEditMode(!hasSavedPanelName(currentUser));
   renderAiProviderOptions();
+  await loadUserAiKeyStatus();
   if (openPanelBtnEl) openPanelBtnEl.disabled = false;
   await registerPendingIdentity(currentUser);
   if (!currentUser) return;
@@ -2169,9 +2282,12 @@ function bindEvents() {
       aiProviderSelectEl.addEventListener("change", () => {
         const provider = getResolvedAiProvider();
         saveAiProvider(currentUser, provider);
-        if (aiProviderHintEl) aiProviderHintEl.textContent = `IA selecionada para este usuário: ${formatAiProviderLabel(provider)}.`;
+        renderAiProviderOptions();
+        refreshAiKeyStatus();
       });
     }
+    if (saveAiProviderKeyBtnEl) saveAiProviderKeyBtnEl.addEventListener("click", saveUserAiKey);
+    if (deleteAiProviderKeyBtnEl) deleteAiProviderKeyBtnEl.addEventListener("click", deleteUserAiKey);
     if (adviceAskBtn && adviceQuestion) adviceAskBtn.onclick = () => {
       const question = adviceQuestion.value.trim();
       if (!question) return;

@@ -7,6 +7,7 @@ module.exports = async function handler(request, response) {
 
   return json(response, 200, {
     ok: true,
+    supportedAiProviders: ["anthropic", "openai", "gemini"],
     availableAiProviders: [
       Boolean(process.env.ANTHROPIC_API_KEY) ? "anthropic" : null,
       Boolean(process.env.OPENAI_API_KEY) ? "openai" : null,
@@ -27,6 +28,7 @@ module.exports = async function handler(request, response) {
       supabaseAnonKey: process.env.SUPABASE_ANON_KEY || "",
       metaAppId: process.env.META_APP_ID || "",
       metaApiVersion: process.env.META_API_VERSION || "v25.0",
+      supportedAiProviders: ["anthropic", "openai", "gemini"],
       availableAiProviders: [
         Boolean(process.env.ANTHROPIC_API_KEY) ? "anthropic" : null,
         Boolean(process.env.OPENAI_API_KEY) ? "openai" : null,
