@@ -109,6 +109,21 @@ function sumActionTotals(actionTotals = {}, types = []) {
   return types.reduce((acc, type) => acc + safeNumber(actionTotals[type]), 0);
 }
 
+function getFocusResultsFromTotals(actionTotals = {}, focusType = "lead") {
+  const type = String(focusType || "").trim().toLowerCase();
+  if (!type) return 0;
+
+  if (type === "lead") {
+    return sumActionTotals(actionTotals, LEAD_ACTION_TYPES);
+  }
+
+  if (type === "purchase") {
+    return sumActionTotals(actionTotals, ["purchase", "offsite_conversion.fb_pixel_purchase"]);
+  }
+
+  return safeNumber(actionTotals[type]);
+}
+
 function buildAdvancedFromTotals(actionTotals = {}, uniqueActionTotals = {}, spend = 0, impressions = 0, clicks = 0, leads = 0, focusType = "lead") {
   const linkClicks = sumActionTotals(actionTotals, ["link_click", "inline_link_click"]);
   const landingPageView = sumActionTotals(actionTotals, ["landing_page_view"]);
@@ -123,7 +138,7 @@ function buildAdvancedFromTotals(actionTotals = {}, uniqueActionTotals = {}, spe
   const completeRegistration = sumActionTotals(actionTotals, ["complete_registration"]);
   const postEngagement = sumActionTotals(actionTotals, ["post_engagement", "post_reaction", "comment", "post", "post_saved"]);
   const videoViews = sumActionTotals(actionTotals, ["video_view", "thruplay"]);
-  const focusResults = safeNumber(actionTotals[focusType]);
+  const focusResults = getFocusResultsFromTotals(actionTotals, focusType);
 
   return {
     link_clicks: linkClicks,
@@ -379,7 +394,7 @@ module.exports = async function handler(request, response) {
     summary.frequency = summary.reach > 0 ? summary.impressions / summary.reach : 0;
     summary.cpl = summary.leads > 0 ? summary.spend / summary.leads : 0;
     const primarySummaryResult = getPrimaryResultFromTotals(summary.actionTotals);
-    const focusResults = safeNumber(summary.actionTotals[agencyMetricFocus]);
+    const focusResults = getFocusResultsFromTotals(summary.actionTotals, agencyMetricFocus);
     summary.result_type = agencyMetricFocus;
     summary.total_results = focusResults;
     summary.primary_result_type = primarySummaryResult.type;
