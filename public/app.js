@@ -212,8 +212,6 @@ const kResultsEl = document.getElementById("kResults");
 const kResultTypeEl = document.getElementById("kResultType");
 const kDailySpendEl = document.getElementById("kDailySpend");
 const objectiveSummaryEl = document.getElementById("objectiveSummary");
-const advancedMetricsEl = document.getElementById("advancedMetrics");
-const agencyPresetPreviewEl = document.getElementById("agencyPresetPreview");
 const stageBarsEl = document.getElementById("stageBars");
 const topAdsListEl = document.getElementById("topAdsList");
 const cvTitleEl = document.getElementById("cvTitle");
@@ -257,115 +255,6 @@ function normalizeResultType(type) {
 
 function toPercent(value) {
   return `${Number(value || 0).toFixed(2).replace(".", ",")}%`;
-}
-
-const AGENCY_METRICS_PRESET = [
-  { key: "spend", label: "Gasto", type: "money", group: "Core" },
-  { key: "impressions", label: "Impressões", type: "int", group: "Core" },
-  { key: "reach", label: "Alcance", type: "int", group: "Core" },
-  { key: "frequency", label: "Frequência", type: "decimal", group: "Core" },
-  { key: "link_clicks", label: "Cliques no link", type: "int", group: "Core" },
-  { key: "link_ctr", label: "CTR (link)", type: "percent", group: "Core" },
-  { key: "link_cpc", label: "CPC (link)", type: "money", group: "Core" },
-  { key: "cpm", label: "CPM", type: "money", group: "Core" },
-  { key: "landing_page_views", label: "Landing Page Views", type: "int", group: "Conversão" },
-  { key: "cost_per_lpv", label: "Custo por LPV", type: "money", group: "Conversão" },
-  { key: "leads", label: "Leads", type: "int", group: "Conversão" },
-  { key: "cpl", label: "CPL", type: "money", group: "Conversão" },
-  { key: "messages_started", label: "Mensagens iniciadas", type: "int", group: "Conversão" },
-  { key: "cost_per_message", label: "Custo por conversa", type: "money", group: "Conversão" },
-  { key: "add_to_cart", label: "Add to Cart", type: "int", group: "Conversão" },
-  { key: "initiate_checkout", label: "Initiate Checkout", type: "int", group: "Conversão" },
-  { key: "purchase", label: "Purchases", type: "int", group: "Resultado" },
-  { key: "cpa", label: "CPA (compra)", type: "money", group: "Resultado" },
-  { key: "conversion_value", label: "Valor de conversão", type: "money", group: "Resultado" },
-  { key: "purchase_roas", label: "ROAS", type: "decimal", group: "Resultado" }
-];
-
-function formatAgencyMetricValue(type, value) {
-  if (value === null || value === undefined || value === "") return "-";
-  const numberValue = Number(value);
-  if (!Number.isFinite(numberValue)) return "-";
-  if (type === "money") return brMoney(numberValue);
-  if (type === "int") return brInt(numberValue);
-  if (type === "percent") return toPercent(numberValue);
-  return numberValue.toFixed(2).replace(".", ",");
-}
-
-function getAgencyPresetMetricMap(summary = {}) {
-  const advanced = summary.advanced || {};
-  const spend = Number(summary.spend || 0);
-  const lpv = Number(advanced.landing_page_view || 0);
-  const messageStarts = Number(advanced.messaging_conversation_started_7d || 0);
-  const purchases = Number(advanced.purchase || 0);
-  const purchaseRoas = Number(advanced.purchase_roas || 0);
-  const conversionValue = Number(summary.purchase_conversion_value || advanced.purchase_conversion_value || 0);
-
-  return {
-    spend,
-    impressions: Number(summary.impressions || 0),
-    reach: Number(summary.reach || 0),
-    frequency: Number(summary.frequency || 0),
-    link_clicks: Number(advanced.link_clicks || 0),
-    link_ctr: Number(advanced.link_ctr || 0),
-    link_cpc: Number(advanced.link_cpc || 0),
-    cpm: Number(summary.cpm || 0),
-    landing_page_views: lpv,
-    cost_per_lpv: lpv > 0 ? spend / lpv : null,
-    leads: Number(summary.leads || 0),
-    cpl: Number(summary.cpl || 0),
-    messages_started: messageStarts,
-    cost_per_message: messageStarts > 0 ? spend / messageStarts : null,
-    add_to_cart: Number(advanced.add_to_cart || 0),
-    initiate_checkout: Number(advanced.initiate_checkout || 0),
-    purchase: purchases,
-    cpa: purchases > 0 ? spend / purchases : null,
-    conversion_value: conversionValue > 0 ? conversionValue : null,
-    purchase_roas: purchaseRoas
-  };
-}
-
-function renderAgencyPresetPreview(summary = null) {
-  if (!agencyPresetPreviewEl) return;
-  if (!summary || Object.keys(summary).length === 0) {
-    agencyPresetPreviewEl.textContent = "Carregue as métricas para visualizar o padrão agência com 20 indicadores.";
-    return;
-  }
-
-  const values = getAgencyPresetMetricMap(summary);
-  const groups = ["Core", "Conversão", "Resultado"];
-  const html = groups
-    .map((group) => {
-      const items = AGENCY_METRICS_PRESET
-        .filter((metric) => metric.group === group)
-        .map((metric) => {
-          const display = formatAgencyMetricValue(metric.type, values[metric.key]);
-          return `<li style="display:flex; justify-content:space-between; gap:10px; padding:4px 0; border-bottom:1px dashed #deebf5;"><span>${escapeHtml(metric.label)}</span><strong>${escapeHtml(display)}</strong></li>`;
-        })
-        .join("");
-      return `
-        <div style="border:1px solid #deebf5; border-radius:10px; padding:8px 10px; background:#ffffff; margin-bottom:8px;">
-          <div style="font-size:0.78rem; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:#2b577c; margin-bottom:6px;">${group}</div>
-          <ul style="list-style:none; margin:0; padding:0;">${items}</ul>
-        </div>
-      `;
-    })
-    .join("");
-
-  agencyPresetPreviewEl.innerHTML = html;
-}
-
-function renderAdvancedMetrics(summary = {}) {
-  if (!advancedMetricsEl) return;
-  const advanced = summary.advanced || {};
-  const lines = [
-    `Cliques no link: ${brInt(advanced.link_clicks || 0)} | Cliques de saída: ${brInt(advanced.outbound_clicks || 0)} | Cliques únicos link: ${brInt(advanced.unique_link_clicks || 0)}`,
-    `Conversas 7d: ${brInt(advanced.messaging_conversation_started_7d || 0)} | Primeira resposta: ${brInt(advanced.messaging_first_reply || 0)} | Contatos: ${brInt(advanced.contact_total || 0)}`,
-    `Compras: ${brInt(advanced.purchase || 0)} | Checkout: ${brInt(advanced.initiate_checkout || 0)} | Carrinho: ${brInt(advanced.add_to_cart || 0)} | Cadastro: ${brInt(advanced.complete_registration || 0)}`,
-    `CTR link: ${toPercent(advanced.link_ctr || 0)} | CPC link: ${brMoney(advanced.link_cpc || 0)} | Taxa clique->lead: ${toPercent(advanced.click_to_lead_rate || 0)} | ROAS compra: ${(Number(advanced.purchase_roas || 0)).toFixed(2).replace(".", ",")}`,
-    `Foco da agência: ${normalizeResultType(summary.focus_action_type || "-")} = ${brInt(summary.focus_results || 0)} | Custo por foco: ${brMoney(summary.focus_cost || 0)}`
-  ];
-  advancedMetricsEl.textContent = lines.join("\n");
 }
 
 function parseDateISO(value) {
@@ -1650,8 +1539,6 @@ function clearMetrics() {
   kResultTypeEl.textContent = "-";
   kDailySpendEl.textContent = brMoney(0);
   objectiveSummaryEl.textContent = "Carregue as métricas para gerar o resumo estratégico.";
-  renderAgencyPresetPreview(null);
-  if (advancedMetricsEl) advancedMetricsEl.textContent = "Carregue as métricas para visualizar indicadores avançados.";
   stageBarsEl.innerHTML = "";
   topAdsListEl.innerHTML = "";
   cvIndicatorsEl.innerHTML = "";
@@ -1674,8 +1561,6 @@ function updateCards(summary) {
   kLinkCtrEl.textContent = toPercent(summary.advanced?.link_ctr || 0);
   kCpmEl.textContent = brMoney(summary.cpm || 0);
   kMsgStart7dEl.textContent = brInt(summary.advanced?.messaging_conversation_started_7d || 0);
-  renderAgencyPresetPreview(summary);
-  renderAdvancedMetrics(summary);
 }
 
 function updateMetricsHistory(payload) {
