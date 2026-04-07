@@ -111,6 +111,7 @@ function sumActionTotals(actionTotals = {}, types = []) {
 
 function buildAdvancedFromTotals(actionTotals = {}, uniqueActionTotals = {}, spend = 0, impressions = 0, clicks = 0, leads = 0, focusType = "lead") {
   const linkClicks = sumActionTotals(actionTotals, ["link_click", "inline_link_click"]);
+  const landingPageView = sumActionTotals(actionTotals, ["landing_page_view"]);
   const outboundClicks = sumActionTotals(actionTotals, ["outbound_click"]);
   const uniqueLinkClicks = sumActionTotals(uniqueActionTotals, ["link_click", "inline_link_click"]);
   const msg7d = sumActionTotals(actionTotals, ["onsite_conversion.messaging_conversation_started_7d"]);
@@ -126,6 +127,7 @@ function buildAdvancedFromTotals(actionTotals = {}, uniqueActionTotals = {}, spe
 
   return {
     link_clicks: linkClicks,
+    landing_page_view: landingPageView,
     outbound_clicks: outboundClicks,
     unique_link_clicks: uniqueLinkClicks,
     messaging_conversation_started_7d: msg7d,
