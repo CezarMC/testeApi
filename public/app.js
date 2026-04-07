@@ -131,6 +131,7 @@ let selectedPeriodDays = 1;
 let lastMetricsPayload = null;
 let metricsHistory = [];
 let campaignBreakdowns = [];
+let availableAiProviders = [];
 
 const entryScreenEl = document.getElementById("entryScreen");
 const signupCardEl = document.getElementById("signupCard");
@@ -196,6 +197,8 @@ const reportTypeEl = document.getElementById("reportType");
 const tableBodyEl = document.getElementById("tableBody");
 const adviceEl = document.getElementById("advice");
 const rawOutputEl = document.getElementById("rawOutput");
+const aiProviderSelectEl = document.getElementById("aiProviderSelect");
+const aiProviderHintEl = document.getElementById("aiProviderHint");
 const campaignDetailSelectEl = document.getElementById("campaignDetailSelect");
 const campaignDetailMetaEl = document.getElementById("campaignDetailMeta");
 const campaignDetailChartEl = document.getElementById("campaignDetailChart");
@@ -710,6 +713,71 @@ function getPanelName(user) {
     // Ignora falha de storage.
   }
   return getDefaultPanelName(user);
+}
+
+function getAiProviderStorageKey(user) {
+  const id = String(user?.id || user?.email || "anon");
+  return `panelAiProvider:${id}`;
+}
+
+function getSavedAiProvider(user) {
+  if (!user) return "";
+  try {
+    return String(localStorage.getItem(getAiProviderStorageKey(user)) || "").trim().toLowerCase();
+  } catch (_) {
+    return "";
+  }
+}
+
+function saveAiProvider(user, provider) {
+  if (!user) return;
+  try {
+    localStorage.setItem(getAiProviderStorageKey(user), String(provider || "").trim().toLowerCase());
+  } catch (_) {
+    // Ignora falha de storage.
+  }
+}
+
+function getResolvedAiProvider() {
+  if (!availableAiProviders.length) return "";
+  const selected = String(aiProviderSelectEl?.value || "").trim().toLowerCase();
+  if (selected && availableAiProviders.includes(selected)) return selected;
+  return availableAiProviders[0] || "";
+}
+
+function formatAiProviderLabel(provider) {
+  if (provider === "anthropic") return "Claude";
+  if (provider === "openai") return "OpenAI";
+  if (provider === "gemini") return "Gemini";
+  return provider || "IA";
+}
+
+function renderAiProviderOptions() {
+  if (!aiProviderSelectEl) return;
+  aiProviderSelectEl.innerHTML = "";
+  if (!availableAiProviders.length) {
+    aiProviderSelectEl.innerHTML = "<option value=''>Fallback interno</option>";
+    aiProviderSelectEl.disabled = true;
+    if (aiProviderHintEl) aiProviderHintEl.textContent = "Nenhuma IA externa configurada no servidor. O app usa fallback interno.";
+    return;
+  }
+
+  availableAiProviders.forEach((provider) => {
+    const option = document.createElement("option");
+    option.value = provider;
+    option.textContent = formatAiProviderLabel(provider);
+    aiProviderSelectEl.appendChild(option);
+  });
+
+  const saved = getSavedAiProvider(currentUser);
+  const selected = availableAiProviders.includes(saved) ? saved : availableAiProviders[0];
+  aiProviderSelectEl.value = selected;
+  aiProviderSelectEl.disabled = availableAiProviders.length <= 1;
+  if (aiProviderHintEl) {
+    aiProviderHintEl.textContent = availableAiProviders.length <= 1
+      ? `Servidor com ${formatAiProviderLabel(selected)} disponível.`
+      : "Cada usuário pode escolher a IA disponível no servidor.";
+  }
 }
 
 function hasSavedPanelName(user) {
@@ -1230,6 +1298,9 @@ async function loadConfig() {
   }
 
   const cfg = data.config || {};
+  availableAiProviders = Array.isArray(data.publicConfig?.availableAiProviders)
+    ? data.publicConfig.availableAiProviders.map((item) => String(item || "").trim().toLowerCase()).filter(Boolean)
+    : [];
   if (!cfg.supabaseUrlConfigured || !cfg.supabaseAnonKeyConfigured || !cfg.supabaseServiceRoleConfigured || !cfg.encryptionConfigured) {
     setEntryStatus("err", "Configuracao incompleta no servidor.");
     setEntryNextStep("configure Supabase e ENCRYPTION_KEY antes de usar.");
@@ -1298,6 +1369,7 @@ async function updateAuthState(user) {
     setMainNextStep("realize login para habilitar o painel.");
     clearAvailableAccounts();
     clientSelectEl.innerHTML = "<option value=''>Selecione...</option>";
+    renderAiProviderOptions();
     return;
   }
 
@@ -1307,6 +1379,7 @@ async function updateAuthState(user) {
   setAuthStatus(panelName);
   if (displayNameInputEl) displayNameInputEl.value = panelName;
   setDisplayNameEditMode(!hasSavedPanelName(currentUser));
+  renderAiProviderOptions();
   if (openPanelBtnEl) openPanelBtnEl.disabled = false;
   await registerPendingIdentity(currentUser);
   if (!currentUser) return;
@@ -1914,6 +1987,7 @@ async function loadAdvice(extra = {}) {
   const payload = {
     ...lastMetricsPayload,
     selectedCampaign: getSelectedCampaignDetail(),
+    aiProvider: getResolvedAiProvider(),
     userName: getAdviceUserName(),
     objectiveSummary: objectiveSummaryEl ? objectiveSummaryEl.textContent.trim() : "",
     ...extra
@@ -2091,6 +2165,13 @@ function bindEvents() {
     if (adviceUsefulBtn) adviceUsefulBtn.onclick = () => setStatus("ok", "Obrigado pelo feedback! IA marcada como útil.");
     if (adviceNotUsefulBtn) adviceNotUsefulBtn.onclick = () => setStatus("warn", "Feedback registrado: dica não foi útil.");
     if (adviceRefreshBtn) adviceRefreshBtn.onclick = () => loadAdvice({ refresh: true });
+    if (aiProviderSelectEl) {
+      aiProviderSelectEl.addEventListener("change", () => {
+        const provider = getResolvedAiProvider();
+        saveAiProvider(currentUser, provider);
+        if (aiProviderHintEl) aiProviderHintEl.textContent = `IA selecionada para este usuário: ${formatAiProviderLabel(provider)}.`;
+      });
+    }
     if (adviceAskBtn && adviceQuestion) adviceAskBtn.onclick = () => {
       const question = adviceQuestion.value.trim();
       if (!question) return;

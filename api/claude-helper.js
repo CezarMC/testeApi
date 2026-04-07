@@ -5,6 +5,119 @@ function firstNameOf(value) {
   return String(value || "Usuario").trim().split(/\s+/)[0] || "Usuario";
 }
 
+function getAvailableProviders() {
+  return [
+    String(process.env.ANTHROPIC_API_KEY || "").trim() ? "anthropic" : null,
+    String(process.env.OPENAI_API_KEY || "").trim() ? "openai" : null,
+    String(process.env.GEMINI_API_KEY || "").trim() ? "gemini" : null
+  ].filter(Boolean);
+}
+
+function resolveProvider(requestedProvider) {
+  const available = getAvailableProviders();
+  const requested = String(requestedProvider || "").trim().toLowerCase();
+  if (requested && available.includes(requested)) return requested;
+  return available[0] || "fallback";
+}
+
+async function callAnthropic(prompt) {
+  const apiKey = String(process.env.ANTHROPIC_API_KEY || "").trim();
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01"
+    },
+    body: JSON.stringify({
+      model: "claude-3-5-sonnet-latest",
+      max_tokens: 500,
+      temperature: 0.2,
+      messages: [{ role: "user", content: prompt }]
+    })
+  });
+
+  const data = await response.json();
+  return {
+    ok: response.ok,
+    provider: "anthropic",
+    text: data?.content?.[0]?.text || "",
+    error: data
+  };
+}
+
+async function callOpenAI(prompt) {
+  const apiKey = String(process.env.OPENAI_API_KEY || "").trim();
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: "gpt-4.1-mini",
+      temperature: 0.2,
+      response_format: { type: "json_object" },
+      messages: [{ role: "user", content: prompt }]
+    })
+  });
+
+  const data = await response.json();
+  return {
+    ok: response.ok,
+    provider: "openai",
+    text: data?.choices?.[0]?.message?.content || "",
+    error: data
+  };
+}
+
+async function callGemini(prompt) {
+  const apiKey = String(process.env.GEMINI_API_KEY || "").trim();
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      generationConfig: {
+        temperature: 0.2,
+        responseMimeType: "application/json"
+      },
+      contents: [{ parts: [{ text: prompt }] }]
+    })
+  });
+
+  const data = await response.json();
+  return {
+    ok: response.ok,
+    provider: "gemini",
+    text: data?.candidates?.[0]?.content?.parts?.[0]?.text || "",
+    error: data
+  };
+}
+
+async function callProvider(provider, prompt) {
+  if (provider === "anthropic") return callAnthropic(prompt);
+  if (provider === "openai") return callOpenAI(prompt);
+  if (provider === "gemini") return callGemini(prompt);
+  return { ok: false, provider: "fallback", text: "", error: { error: "Nenhum provedor configurado." } };
+}
+
+function parseStructuredAdvice(text, userName) {
+  try {
+    return JSON.parse(text);
+  } catch (_) {
+    return {
+      greeting: `${firstNameOf(userName)}, recebi a análise da IA em formato livre.`,
+      summary: text || "Resposta sem JSON estruturado.",
+      diagnosis: [],
+      alerts: [],
+      recommendations: [],
+      nextAction: "Ajuste o prompt ou troque de provedor."
+    };
+  }
+}
+
 function compactRows(rows) {
   if (!Array.isArray(rows)) return [];
   return rows.slice(0, 12).map((row) => ({
@@ -136,10 +249,17 @@ module.exports = async function handler(request, response) {
   const metrics = body.metrics && typeof body.metrics === "object" ? body.metrics : {};
   const rows = Array.isArray(body.rows) ? body.rows : [];
   const selectedCampaign = body.selectedCampaign && typeof body.selectedCampaign === "object" ? body.selectedCampaign : null;
-  const apiKey = String(process.env.ANTHROPIC_API_KEY || "").trim();
+  const requestedProvider = String(body.aiProvider || "").trim().toLowerCase();
+  const resolvedProvider = resolveProvider(requestedProvider);
 
-  if (!apiKey) {
-    return json(response, 200, { ok: true, mode: "fallback", advice: fallbackAdvice(metrics, reportType, periodDays, clientName, userName, question, rows, selectedCampaign) });
+  if (resolvedProvider === "fallback") {
+    return json(response, 200, {
+      ok: true,
+      mode: "fallback",
+      provider: "fallback",
+      availableProviders: getAvailableProviders(),
+      advice: fallbackAdvice(metrics, reportType, periodDays, clientName, userName, question, rows, selectedCampaign)
+    });
   }
 
   const rowInsights = topRowInsights(rows);
@@ -167,51 +287,31 @@ module.exports = async function handler(request, response) {
   ].join("\n");
 
   try {
-    const anthropicResponse = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01"
-      },
-      body: JSON.stringify({
-        model: "claude-3-5-sonnet-latest",
-        max_tokens: 400,
-        temperature: 0.2,
-        messages: [{ role: "user", content: prompt }]
-      })
-    });
-
-    const data = await anthropicResponse.json();
-    if (!anthropicResponse.ok) {
+    const providerResponse = await callProvider(resolvedProvider, prompt);
+    if (!providerResponse.ok) {
       return json(response, 200, {
         ok: true,
         mode: "fallback",
+        provider: resolvedProvider,
+        availableProviders: getAvailableProviders(),
         advice: fallbackAdvice(metrics, reportType, periodDays, clientName, userName, question, rows, selectedCampaign),
-        claudeError: data
+        providerError: providerResponse.error
       });
     }
 
-    const text = data?.content?.[0]?.text || "";
-    let parsed;
-    try {
-      parsed = JSON.parse(text);
-    } catch (_) {
-      parsed = {
-        greeting: `${firstNameOf(userName)}, recebi a análise da IA em formato livre.`,
-        summary: text || "Claude retornou resposta sem JSON.",
-        diagnosis: [],
-        alerts: [],
-        recommendations: [],
-        nextAction: "Ajuste o prompt para resposta estruturada."
-      };
-    }
-
-    return json(response, 200, { ok: true, mode: "claude", advice: parsed });
+    return json(response, 200, {
+      ok: true,
+      mode: resolvedProvider,
+      provider: resolvedProvider,
+      availableProviders: getAvailableProviders(),
+      advice: parseStructuredAdvice(providerResponse.text, userName)
+    });
   } catch (error) {
     return json(response, 200, {
       ok: true,
       mode: "fallback",
+      provider: resolvedProvider,
+      availableProviders: getAvailableProviders(),
       advice: fallbackAdvice(metrics, reportType, periodDays, clientName, userName, question, rows, selectedCampaign),
       detail: error.message
     });
