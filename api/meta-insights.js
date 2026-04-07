@@ -40,14 +40,16 @@ function sumActionsByTypes(actions, types) {
   }, 0);
 }
 
+// Tipos usados para contar leads sem dupla contagem.
+// Excluídos deliberadamente:
+//   onsite_conversion.lead_grouped – agrupamento que sobrepõe lead + onsite_web_lead
+//   omni_lead                      – agrupamento omnichannel, sobrepõe outros tipos
+//   onsite_conversion.messaging_first_reply – mesmo usuário de messaging_conversation_started_7d
 const LEAD_ACTION_TYPES = [
   "lead",
-  "onsite_conversion.lead_grouped",
   "offsite_conversion.fb_pixel_lead",
   "onsite_web_lead",
-  "omni_lead",
   "onsite_conversion.messaging_conversation_started_7d",
-  "onsite_conversion.messaging_first_reply",
   "onsite_conversion.contact_total",
   "submit_application"
 ];
@@ -395,19 +397,32 @@ module.exports = async function handler(request, response) {
   query.set("time_range", JSON.stringify({ since, until }));
   query.set("action_report_time", "conversion");
   query.set("use_account_attribution_setting", "true");
-  query.set("use_unified_attribution_setting", "true");
+  // use_unified_attribution_setting foi depreciado na v17+ e removido
 
-  const url = `https://graph.facebook.com/${apiVersion}/act_${adAccountId}/insights?${query.toString()}`;
+  const baseUrl = `https://graph.facebook.com/${apiVersion}/act_${adAccountId}/insights`;
 
   try {
-    const metaResponse = await fetch(url);
-    const metaData = await metaResponse.json();
+    // Paginação completa: coleta todas as páginas da Graph API
+    const rows = [];
+    let nextUrl = `${baseUrl}?${query.toString()}`;
+    let pageCount = 0;
+    const MAX_PAGES = 10;
 
-    if (!metaResponse.ok) {
-      return json(response, metaResponse.status, { error: "Erro na Meta API", detail: metaData });
+    while (nextUrl && pageCount < MAX_PAGES) {
+      const metaResponse = await fetch(nextUrl);
+      const metaData = await metaResponse.json();
+
+      if (!metaResponse.ok) {
+        return json(response, metaResponse.status, { error: "Erro na Meta API", detail: metaData });
+      }
+
+      if (Array.isArray(metaData.data)) {
+        rows.push(...metaData.data);
+      }
+
+      nextUrl = metaData.paging && metaData.paging.next ? metaData.paging.next : null;
+      pageCount += 1;
     }
-
-    const rows = Array.isArray(metaData.data) ? metaData.data : [];
 
     const normalizedRows = rows.map((row) => {
       const metrics = calcRowMetrics(row);
@@ -476,6 +491,13 @@ module.exports = async function handler(request, response) {
       agencyMetricFocus
     );
     summary.purchase_conversion_value = summary.advanced.purchase_conversion_value;
+
+    // Breakdown de conversões para diagnóstico no painel
+    const conversionBreakdown = Object.entries(summary.actionTotals)
+      .filter(([, v]) => v > 0)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 30)
+      .map(([type, value]) => ({ type, value: Math.round(value * 100) / 100 }));
 
     const adMediaMap = level === "ad"
       ? await fetchAdMediaMap(apiVersion, accessToken, rows.map((row) => String(row.ad_id || "")))
@@ -555,9 +577,9 @@ module.exports = async function handler(request, response) {
           endpoint: `/${apiVersion}/act_${adAccountId}/insights`,
           action_report_time: "conversion",
           use_account_attribution_setting: true,
-          use_unified_attribution_setting: true,
           fields
         },
+        conversionBreakdown,
         totalRows: rows.length
       },
       summary,

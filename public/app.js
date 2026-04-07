@@ -1652,7 +1652,6 @@ async function loadMetrics() {
   };
   rawOutputEl.textContent = "Carregando...";
   const result = await apiPost("/api/meta-insights", payload);
-  rawOutputEl.textContent = JSON.stringify(result.data, null, 2);
   if (!result.ok || !result.data.ok) {
     setStatus("err", result.data.error || "Falha ao consultar a Meta API.");
     setMainNextStep("confira token Meta, cliente e tente novamente.");
@@ -1662,6 +1661,18 @@ async function loadMetrics() {
   updateCards(result.data.summary || {});
   updateTable(result.data.rows || []);
   updateExecutiveBlocks(result.data.rows || [], result.data.summary || {}, result.data.context || {}, dateStart, dateEnd);
+
+  // Diagnóstico de conversões: mostra breakdown de action_types reais recebidos da Meta API
+  const breakdown = (result.data.context || {}).conversionBreakdown || [];
+  if (breakdown.length > 0) {
+    const lines = ["Conversões recebidas da Meta API (action_types com valor > 0):\n"];
+    breakdown.forEach(({ type, value }) => {
+      lines.push(`  ${type}: ${value}`);
+    });
+    rawOutputEl.textContent = lines.join("\n");
+  } else {
+    rawOutputEl.textContent = "Sem conversões retornadas pela Meta API neste período.";
+  }
   lastMetricsPayload = {
     clientName: selected.dataset.name || "Cliente",
     reportType: reportTypeEl.value,
