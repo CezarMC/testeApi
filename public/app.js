@@ -299,6 +299,7 @@ function getAgencyPresetMetricMap(summary = {}) {
   const messageStarts = Number(advanced.messaging_conversation_started_7d || 0);
   const purchases = Number(advanced.purchase || 0);
   const purchaseRoas = Number(advanced.purchase_roas || 0);
+  const conversionValue = Number(summary.purchase_conversion_value || advanced.purchase_conversion_value || 0);
 
   return {
     spend,
@@ -319,7 +320,7 @@ function getAgencyPresetMetricMap(summary = {}) {
     initiate_checkout: Number(advanced.initiate_checkout || 0),
     purchase: purchases,
     cpa: purchases > 0 ? spend / purchases : null,
-    conversion_value: purchaseRoas > 0 ? spend * purchaseRoas : null,
+    conversion_value: conversionValue > 0 ? conversionValue : null,
     purchase_roas: purchaseRoas
   };
 }
