@@ -1293,6 +1293,24 @@
 			</div>
 
 			<div class="field">
+				<label>Campanha isolada para análise</label>
+				<div style="display:grid; gap:10px; border:1px solid #d9e5ef; border-radius:12px; padding:12px; background:#f8fbff;">
+					<div style="display:flex; gap:10px; flex-wrap:wrap; align-items:end;">
+						<div style="flex:1; min-width:240px;">
+							<label for="campaignDetailSelect">Selecione a campanha</label>
+							<select id="campaignDetailSelect">
+								<option value="">Carregue as métricas para listar campanhas</option>
+							</select>
+						</div>
+						<button id="analyzeCampaignBtn" class="btn btn-soft btn-sm" type="button">Analisar campanha na IA</button>
+					</div>
+					<div id="campaignDetailMeta" class="next-step">Selecione uma campanha para ver os detalhes isolados.</div>
+					<div id="campaignDetailChart" style="display:grid; gap:10px;"></div>
+					<div id="campaignDetailSummary" style="font-size:0.88rem; color:#35516d;"></div>
+				</div>
+			</div>
+
+			<div class="field">
 				<label>Distribuição do investimento por etapa</label>
 				<div id="stageDistribution" style="border:1px solid #d9e5ef; border-radius:12px; padding:10px 12px; background:#fff;">
 					<div id="stageBars" style="display:flex; flex-direction:column; gap:10px;"></div>
@@ -1316,6 +1334,7 @@
 								<th>Conjunto</th>
 								<th>Anúncio</th>
 								<th>Mídia</th>
+								<th>Objetivo</th>
 								<th>Tipo</th>
 								<th>Público</th>
 								<th>Impressões</th>
@@ -1333,7 +1352,7 @@
 							</tr>
 						</thead>
 						<tbody id="tableBody">
-							<tr><td colspan="18">Sem dados ainda.</td></tr>
+							<tr><td colspan="19">Sem dados ainda.</td></tr>
 						</tbody>
 					</table>
 				</div>

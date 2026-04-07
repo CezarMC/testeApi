@@ -22,6 +22,36 @@ function compactRows(rows) {
   }));
 }
 
+function compactCampaignDetail(campaignDetail) {
+  if (!campaignDetail || typeof campaignDetail !== "object") return null;
+  const items = Array.isArray(campaignDetail.items) ? campaignDetail.items : [];
+  return {
+    name: campaignDetail.name || "Campanha",
+    objective: campaignDetail.objective || "-",
+    spend: Number(campaignDetail.spend || 0),
+    impressions: Number(campaignDetail.impressions || 0),
+    reach: Number(campaignDetail.reach || 0),
+    clicks: Number(campaignDetail.clicks || 0),
+    linkClicks: Number(campaignDetail.linkClicks || 0),
+    results: Number(campaignDetail.results || 0),
+    ctr: Number(campaignDetail.ctr || 0),
+    cpc: Number(campaignDetail.cpc || 0),
+    cpm: Number(campaignDetail.cpm || 0),
+    frequency: Number(campaignDetail.frequency || 0),
+    items: items.slice(0, 12).map((item) => ({
+      label: item.label || "Item",
+      spend: Number(item.spend || 0),
+      impressions: Number(item.impressions || 0),
+      clicks: Number(item.clicks || 0),
+      linkClicks: Number(item.linkClicks || 0),
+      results: Number(item.results || 0),
+      ctr: Number(item.ctr || 0),
+      cpc: Number(item.cpc || 0),
+      cpm: Number(item.cpm || 0)
+    }))
+  };
+}
+
 function topRowInsights(rows) {
   const compact = compactRows(rows);
   const bySpend = [...compact].sort((a, b) => b.spend - a.spend).slice(0, 3);
@@ -29,7 +59,7 @@ function topRowInsights(rows) {
   return { bySpend, byResults };
 }
 
-function fallbackAdvice(metrics, reportType, periodDays, clientName, userName, question, rows) {
+function fallbackAdvice(metrics, reportType, periodDays, clientName, userName, question, rows, campaignDetail) {
   const spend = Number(metrics.spend || 0);
   const ctr = Number(metrics.ctr || 0);
   const cpc = Number(metrics.cpc || 0);
@@ -40,6 +70,7 @@ function fallbackAdvice(metrics, reportType, periodDays, clientName, userName, q
   const recommendations = [];
   const userFirstName = firstNameOf(userName);
   const highlighted = topRowInsights(rows);
+  const selectedCampaign = compactCampaignDetail(campaignDetail);
 
   if (spend === 0) alerts.push("Nenhum gasto no período. Confirme se a campanha está ativa e se a conta correta foi selecionada.");
   if (ctr < 1 && spend > 0) diagnosis.push("CTR abaixo do ideal para tráfego pago. Isso sugere desgaste criativo, promessa fraca ou segmentação ampla demais.");
@@ -47,6 +78,14 @@ function fallbackAdvice(metrics, reportType, periodDays, clientName, userName, q
   if (leads === 0 && spend > 0) alerts.push("Houve gasto sem geração de leads. Vale revisar oferta, formulário e página de destino imediatamente.");
   if (leads > 0 && cpl > 0) diagnosis.push(`O CPL atual está em ${cpl.toFixed(2)}. O foco agora é reduzir custo sem derrubar o volume.`);
   if (!diagnosis.length && !alerts.length) diagnosis.push("Os indicadores estão estáveis. O melhor caminho é otimização incremental com teste controlado.");
+
+  if (selectedCampaign) {
+    diagnosis.unshift(`Campanha isolada em análise: ${selectedCampaign.name}, com gasto de ${selectedCampaign.spend.toFixed(2)} e ${selectedCampaign.results.toFixed(0)} resultado(s).`);
+    if (selectedCampaign.results === 0 && selectedCampaign.spend > 0) {
+      alerts.unshift(`A campanha ${selectedCampaign.name} teve gasto sem resultado no período isolado.`);
+    }
+    recommendations.unshift(`Analise primeiro a campanha ${selectedCampaign.name} isoladamente, comparando os itens internos por gasto, clique e resultado.`);
+  }
 
   recommendations.push("Priorize os anúncios com maior gasto e compare CTR, CPC e resultado antes de escalar verba.");
   if (ctr < 1 && spend > 0) recommendations.push("Teste duas novas variações de criativo com gancho mais forte nos primeiros 3 segundos ou na primeira linha do texto.");
@@ -61,7 +100,7 @@ function fallbackAdvice(metrics, reportType, periodDays, clientName, userName, q
 
   return {
     greeting: `${userFirstName}, aqui vai uma leitura mais estratégica das métricas de ${clientName || "cliente"}.`,
-    summary: `Análise automática para ${clientName || "cliente"} no relatório ${reportType} (${periodDays} dia(s)), com foco em decisão prática e próximos passos.`,
+    summary: `Análise automática para ${clientName || "cliente"} no relatório ${reportType} (${periodDays} dia(s)), com foco em decisão prática e próximos passos${selectedCampaign ? ` e recorte isolado da campanha ${selectedCampaign.name}` : ""}.`,
     diagnosis: diagnosis.slice(0, 3),
     alerts: alerts.slice(0, 3),
     recommendations: recommendations.slice(0, 5),
@@ -96,13 +135,15 @@ module.exports = async function handler(request, response) {
   const objectiveSummary = String(body.objectiveSummary || "").trim();
   const metrics = body.metrics && typeof body.metrics === "object" ? body.metrics : {};
   const rows = Array.isArray(body.rows) ? body.rows : [];
+  const selectedCampaign = body.selectedCampaign && typeof body.selectedCampaign === "object" ? body.selectedCampaign : null;
   const apiKey = String(process.env.ANTHROPIC_API_KEY || "").trim();
 
   if (!apiKey) {
-    return json(response, 200, { ok: true, mode: "fallback", advice: fallbackAdvice(metrics, reportType, periodDays, clientName, userName, question, rows) });
+    return json(response, 200, { ok: true, mode: "fallback", advice: fallbackAdvice(metrics, reportType, periodDays, clientName, userName, question, rows, selectedCampaign) });
   }
 
   const rowInsights = topRowInsights(rows);
+  const compactSelectedCampaign = compactCampaignDetail(selectedCampaign);
 
   const prompt = [
     "Você é um analista de mídia paga em português do Brasil.",
@@ -117,8 +158,10 @@ module.exports = async function handler(request, response) {
     `Linhas detalhadas resumidas: ${JSON.stringify(compactRows(rows))}`,
     `Top gastos: ${JSON.stringify(rowInsights.bySpend)}`,
     `Top resultados: ${JSON.stringify(rowInsights.byResults)}`,
+    compactSelectedCampaign ? `Campanha selecionada para análise isolada: ${JSON.stringify(compactSelectedCampaign)}` : "Campanha selecionada para análise isolada: nenhuma.",
     question ? `Pergunta do usuário: ${question}` : "Pergunta do usuário: nenhuma. Gere análise proativa.",
     "Cruze métricas agregadas com os dados detalhados antes de recomendar mudanças.",
+    compactSelectedCampaign ? "Dê prioridade analítica à campanha selecionada e cite o nome dela explicitamente na resposta." : "Se não houver campanha isolada, analise o conjunto geral.",
     "Se houver sinais de risco, deixe isso explícito.",
     "Retorne JSON puro com as chaves: greeting, summary, diagnosis (array com até 3 itens), alerts (array com até 3 itens), recommendations (array de 3 a 5 itens), nextAction."
   ].join("\n");
@@ -144,7 +187,7 @@ module.exports = async function handler(request, response) {
       return json(response, 200, {
         ok: true,
         mode: "fallback",
-        advice: fallbackAdvice(metrics, reportType, periodDays, clientName, userName, question, rows),
+        advice: fallbackAdvice(metrics, reportType, periodDays, clientName, userName, question, rows, selectedCampaign),
         claudeError: data
       });
     }
@@ -169,7 +212,7 @@ module.exports = async function handler(request, response) {
     return json(response, 200, {
       ok: true,
       mode: "fallback",
-      advice: fallbackAdvice(metrics, reportType, periodDays, clientName, userName, question, rows),
+      advice: fallbackAdvice(metrics, reportType, periodDays, clientName, userName, question, rows, selectedCampaign),
       detail: error.message
     });
   }

@@ -130,6 +130,7 @@ let currentUser = null;
 let selectedPeriodDays = 1;
 let lastMetricsPayload = null;
 let metricsHistory = [];
+let campaignBreakdowns = [];
 
 const entryScreenEl = document.getElementById("entryScreen");
 const signupCardEl = document.getElementById("signupCard");
@@ -195,6 +196,11 @@ const reportTypeEl = document.getElementById("reportType");
 const tableBodyEl = document.getElementById("tableBody");
 const adviceEl = document.getElementById("advice");
 const rawOutputEl = document.getElementById("rawOutput");
+const campaignDetailSelectEl = document.getElementById("campaignDetailSelect");
+const campaignDetailMetaEl = document.getElementById("campaignDetailMeta");
+const campaignDetailChartEl = document.getElementById("campaignDetailChart");
+const campaignDetailSummaryEl = document.getElementById("campaignDetailSummary");
+const analyzeCampaignBtnEl = document.getElementById("analyzeCampaignBtn");
 
 const kSpendEl = document.getElementById("kSpend");
 const kClicksEl = document.getElementById("kClicks");
@@ -255,6 +261,207 @@ function normalizeResultType(type) {
 
 function toPercent(value) {
   return `${Number(value || 0).toFixed(2).replace(".", ",")}%`;
+}
+
+function normalizeObjective(obj) {
+  const o = String(obj || "").toLowerCase();
+  if (!o || o === "-") return "-";
+  if (o.includes("lead")) return "Lead";
+  if (o.includes("purchase") || o.includes("sales") || o.includes("conversion")) return "Conversão";
+  if (o.includes("traffic") || o.includes("link_clicks")) return "Tráfego";
+  if (o.includes("message")) return "Mensagens";
+  if (o.includes("reach") || o.includes("awareness")) return "Alcance";
+  if (o.includes("video")) return "Vídeo";
+  if (o.includes("engagement")) return "Engajamento";
+  if (o.includes("app")) return "App";
+  return obj;
+}
+
+function getBreakdownItemLabel(row) {
+  if (row.ad_name && row.ad_name !== "-") return row.ad_name;
+  if (row.adset_name && row.adset_name !== "-") return row.adset_name;
+  return row.campaign_name || "Campanha";
+}
+
+function buildCampaignBreakdowns(rows = []) {
+  const campaigns = new Map();
+
+  rows.forEach((row, index) => {
+    const campaignKey = String(row.campaign_id || row.campaign_name || `campaign-${index}`);
+    const campaignName = String(row.campaign_name || `Campanha ${index + 1}`);
+    const objective = row.objective || "-";
+    const itemKey = String(row.ad_id && row.ad_id !== "-"
+      ? `ad:${row.ad_id}`
+      : row.adset_id && row.adset_id !== "-"
+        ? `adset:${row.adset_id}`
+        : `item:${getBreakdownItemLabel(row)}`);
+    const itemLabel = getBreakdownItemLabel(row);
+
+    if (!campaigns.has(campaignKey)) {
+      campaigns.set(campaignKey, {
+        key: campaignKey,
+        id: row.campaign_id || "-",
+        name: campaignName,
+        objective,
+        spend: 0,
+        impressions: 0,
+        reach: 0,
+        clicks: 0,
+        linkClicks: 0,
+        results: 0,
+        ctr: 0,
+        cpc: 0,
+        cpm: 0,
+        frequency: 0,
+        itemsMap: new Map()
+      });
+    }
+
+    const campaign = campaigns.get(campaignKey);
+    campaign.spend += Number(row.spend || 0);
+    campaign.impressions += Number(row.impressions || 0);
+    campaign.reach += Number(row.reach || 0);
+    campaign.clicks += Number(row.clicks || 0);
+    campaign.linkClicks += Number(row.link_clicks || 0);
+    campaign.results += Number(row.results || 0);
+
+    if (!campaign.itemsMap.has(itemKey)) {
+      campaign.itemsMap.set(itemKey, {
+        key: itemKey,
+        label: itemLabel,
+        spend: 0,
+        impressions: 0,
+        clicks: 0,
+        linkClicks: 0,
+        results: 0,
+        ctr: 0,
+        cpc: 0,
+        cpm: 0,
+        objective
+      });
+    }
+
+    const item = campaign.itemsMap.get(itemKey);
+    item.spend += Number(row.spend || 0);
+    item.impressions += Number(row.impressions || 0);
+    item.clicks += Number(row.clicks || 0);
+    item.linkClicks += Number(row.link_clicks || 0);
+    item.results += Number(row.results || 0);
+  });
+
+  return Array.from(campaigns.values())
+    .map((campaign) => {
+      const items = Array.from(campaign.itemsMap.values())
+        .map((item) => ({
+          ...item,
+          ctr: item.impressions > 0 ? (item.clicks / item.impressions) * 100 : 0,
+          cpc: item.clicks > 0 ? item.spend / item.clicks : 0,
+          cpm: item.impressions > 0 ? (item.spend / item.impressions) * 1000 : 0
+        }))
+        .sort((a, b) => b.results - a.results || b.spend - a.spend)
+        .slice(0, 12);
+
+      return {
+        key: campaign.key,
+        id: campaign.id,
+        name: campaign.name,
+        objective: campaign.objective,
+        spend: campaign.spend,
+        impressions: campaign.impressions,
+        reach: campaign.reach,
+        clicks: campaign.clicks,
+        linkClicks: campaign.linkClicks,
+        results: campaign.results,
+        ctr: campaign.impressions > 0 ? (campaign.clicks / campaign.impressions) * 100 : 0,
+        cpc: campaign.clicks > 0 ? campaign.spend / campaign.clicks : 0,
+        cpm: campaign.impressions > 0 ? (campaign.spend / campaign.impressions) * 1000 : 0,
+        frequency: campaign.reach > 0 ? campaign.impressions / campaign.reach : 0,
+        items
+      };
+    })
+    .sort((a, b) => b.spend - a.spend || b.results - a.results);
+}
+
+function getSelectedCampaignDetail() {
+  if (!campaignDetailSelectEl || !campaignDetailSelectEl.value) return null;
+  return campaignBreakdowns.find((campaign) => campaign.key === campaignDetailSelectEl.value) || null;
+}
+
+function renderCampaignDetailChart(campaign) {
+  if (!campaignDetailChartEl || !campaignDetailMetaEl || !campaignDetailSummaryEl) return;
+  if (!campaign) {
+    campaignDetailMetaEl.textContent = "Selecione uma campanha para ver os detalhes isolados.";
+    campaignDetailChartEl.innerHTML = "";
+    campaignDetailSummaryEl.textContent = "";
+    return;
+  }
+
+  campaignDetailMetaEl.textContent = `Objetivo: ${normalizeObjective(campaign.objective)} | Gasto: ${brMoney(campaign.spend)} | Resultados: ${brInt(campaign.results)} | Cliques: ${brInt(campaign.clicks)} | CTR: ${toPercent(campaign.ctr)}`;
+
+  const items = campaign.items.length ? campaign.items : [{
+    label: campaign.name,
+    spend: campaign.spend,
+    linkClicks: campaign.linkClicks,
+    results: campaign.results,
+    cpc: campaign.cpc,
+    ctr: campaign.ctr
+  }];
+  const maxSpend = Math.max(...items.map((item) => Number(item.spend || 0)), 0.0001);
+  const maxResults = Math.max(...items.map((item) => Number(item.results || 0)), 0.0001);
+  const maxLinkClicks = Math.max(...items.map((item) => Number(item.linkClicks || 0)), 0.0001);
+
+  campaignDetailChartEl.innerHTML = items.map((item) => {
+    const spendWidth = Math.max(4, (Number(item.spend || 0) / maxSpend) * 100);
+    const resultsWidth = Math.max(item.results > 0 ? 4 : 0, (Number(item.results || 0) / maxResults) * 100);
+    const linkWidth = Math.max(item.linkClicks > 0 ? 4 : 0, (Number(item.linkClicks || 0) / maxLinkClicks) * 100);
+    return `
+      <div style="display:grid; gap:6px; border:1px solid #deebf5; border-radius:10px; padding:10px; background:#fff;">
+        <div style="display:flex; justify-content:space-between; gap:10px; align-items:flex-start;">
+          <strong style="font-size:0.9rem; color:#173b5e;">${escapeHtml(item.label)}</strong>
+          <span style="font-size:0.82rem; color:#58708a;">CPC ${brMoney(item.cpc || 0)} | CTR ${toPercent(item.ctr || 0)}</span>
+        </div>
+        <div>
+          <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#35516d;"><span>Gasto</span><span>${brMoney(item.spend || 0)}</span></div>
+          <div style="height:10px; background:#e8eef5; border-radius:999px; overflow:hidden;"><div style="width:${Math.min(100, spendWidth)}%; height:100%; background:#0f6ea8;"></div></div>
+        </div>
+        <div>
+          <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#35516d;"><span>Cliques no link</span><span>${brInt(item.linkClicks || 0)}</span></div>
+          <div style="height:10px; background:#e8eef5; border-radius:999px; overflow:hidden;"><div style="width:${Math.min(100, linkWidth)}%; height:100%; background:#3f8f3f;"></div></div>
+        </div>
+        <div>
+          <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#35516d;"><span>Resultados</span><span>${brInt(item.results || 0)}</span></div>
+          <div style="height:10px; background:#e8eef5; border-radius:999px; overflow:hidden;"><div style="width:${Math.min(100, resultsWidth)}%; height:100%; background:#d98c10;"></div></div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  campaignDetailSummaryEl.textContent = `${campaign.items.length} item(ns) no gráfico. A IA usa esse recorte isolado ao analisar a campanha selecionada.`;
+}
+
+function syncCampaignDetail(rows = []) {
+  if (!campaignDetailSelectEl) return;
+  const previous = campaignDetailSelectEl.value;
+  campaignBreakdowns = buildCampaignBreakdowns(rows);
+  campaignDetailSelectEl.innerHTML = "<option value=''>Selecione uma campanha...</option>";
+
+  campaignBreakdowns.forEach((campaign) => {
+    const option = document.createElement("option");
+    option.value = campaign.key;
+    option.textContent = `${campaign.name} | ${normalizeObjective(campaign.objective)} | ${brMoney(campaign.spend)} | ${brInt(campaign.results)} resultado(s)`;
+    campaignDetailSelectEl.appendChild(option);
+  });
+
+  if (campaignBreakdowns.length === 0) {
+    renderCampaignDetailChart(null);
+    return;
+  }
+
+  const selectedKey = campaignBreakdowns.some((campaign) => campaign.key === previous)
+    ? previous
+    : campaignBreakdowns[0].key;
+  campaignDetailSelectEl.value = selectedKey;
+  renderCampaignDetailChart(getSelectedCampaignDetail());
 }
 
 function parseDateISO(value) {
@@ -1541,6 +1748,9 @@ function clearMetrics() {
   objectiveSummaryEl.textContent = "Carregue as métricas para gerar o resumo estratégico.";
   stageBarsEl.innerHTML = "";
   topAdsListEl.innerHTML = "";
+  campaignBreakdowns = [];
+  if (campaignDetailSelectEl) campaignDetailSelectEl.innerHTML = "<option value=''>Carregue as métricas para listar campanhas</option>";
+  renderCampaignDetailChart(null);
   cvIndicatorsEl.innerHTML = "";
   cvObjectiveEl.textContent = "Sem dados.";
   cvStagesEl.innerHTML = "Sem dados.";
@@ -1596,22 +1806,6 @@ function renderMediaCell(row) {
 
   return `<div style="display:flex;gap:8px;align-items:center;">${imagePart}${videoPart}</div>`;
 }
-
-function normalizeObjective(obj) {
-  const o = String(obj || "").toLowerCase();
-  if (!o || o === "-") return "-";
-  if (o.includes("lead")) return "Lead";
-  if (o.includes("outcome_leads")) return "Lead";
-  if (o.includes("purchase") || o.includes("conversions") || o.includes("outcome_sales")) return "Conversão";
-  if (o.includes("traffic") || o.includes("link_clicks")) return "Tráfego";
-  if (o.includes("messages") || o.includes("outcome_engagement")) return "Mensagens";
-  if (o.includes("reach") || o.includes("awareness") || o.includes("outcome_awareness")) return "Alcance";
-  if (o.includes("video")) return "Vídeo";
-  if (o.includes("engagement") || o.includes("post_engagement")) return "Engajamento";
-  if (o.includes("app")) return "App";
-  return obj;
-}
-
 function updateTable(rows) {
   if (!Array.isArray(rows) || rows.length === 0) {
     tableBodyEl.innerHTML = '<tr><td colspan="19">Sem linhas para o periodo selecionado.</td></tr>';
@@ -1677,6 +1871,7 @@ async function loadMetrics() {
   updateCards(result.data.summary || {});
   updateTable(result.data.rows || []);
   updateExecutiveBlocks(result.data.rows || [], result.data.summary || {}, result.data.context || {}, dateStart, dateEnd);
+  syncCampaignDetail(result.data.rows || []);
 
   // Diagnóstico de conversões: mostra breakdown de action_types reais recebidos da Meta API
   const breakdown = (result.data.context || {}).conversionBreakdown || [];
@@ -1696,7 +1891,8 @@ async function loadMetrics() {
     dateStart,
     dateEnd,
     metrics: result.data.summary || {},
-    rows: result.data.rows || []
+    rows: result.data.rows || [],
+    selectedCampaign: getSelectedCampaignDetail()
   };
   updateMetricsHistory(lastMetricsPayload);
   openMetricsScreen();
@@ -1717,6 +1913,7 @@ async function loadAdvice(extra = {}) {
   adviceEl.textContent = "Gerando recomendacoes...";
   const payload = {
     ...lastMetricsPayload,
+    selectedCampaign: getSelectedCampaignDetail(),
     userName: getAdviceUserName(),
     objectiveSummary: objectiveSummaryEl ? objectiveSummaryEl.textContent.trim() : "",
     ...extra
@@ -1900,6 +2097,27 @@ function bindEvents() {
       loadAdvice({ question });
       adviceQuestion.value = "";
     };
+    if (campaignDetailSelectEl) {
+      campaignDetailSelectEl.addEventListener("change", () => {
+        renderCampaignDetailChart(getSelectedCampaignDetail());
+        const campaign = getSelectedCampaignDetail();
+        if (campaign) {
+          setMainNextStep(`campanha isolada definida: ${campaign.name}. Agora você pode analisar esse recorte na IA.`);
+        }
+      });
+    }
+    if (analyzeCampaignBtnEl) {
+      analyzeCampaignBtnEl.addEventListener("click", () => {
+        const campaign = getSelectedCampaignDetail();
+        if (!campaign) {
+          setStatus("warn", "Selecione uma campanha antes de pedir análise isolada.");
+          return;
+        }
+        loadAdvice({
+          question: `Analise isoladamente a campanha ${campaign.name}, item por item, e explique o que está performando bem, o que está falhando e qual a próxima ação prática.`
+        });
+      });
+    }
   document.getElementById("showSignupBtn").addEventListener("click", () => {
     setSignupMode(true);
     setEntryNextStep("preencha e-mail, senha forte e confirme a conta.");
