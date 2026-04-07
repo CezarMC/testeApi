@@ -421,6 +421,7 @@ module.exports = async function handler(request, response) {
       .map((normalized) => {
         const row = normalized.raw;
         const primaryResult = normalized.primaryResult;
+        const focusRowResults = getFocusResultsFromTotals(normalized.actionTotals, agencyMetricFocus);
         const media = adMediaMap[String(row.ad_id || "")] || {};
         return {
           campaign_id: row.campaign_id || "-",
@@ -456,10 +457,12 @@ module.exports = async function handler(request, response) {
           link_ctr: normalized.advanced.link_ctr,
           link_cpc: normalized.advanced.link_cpc,
           focus_action_type: agencyMetricFocus,
-          focus_results: normalized.advanced.focus_results,
-          focus_cost: normalized.advanced.focus_cost,
-          result_type: primaryResult.type,
-          results: primaryResult.value,
+          focus_results: focusRowResults,
+          focus_cost: focusRowResults > 0 ? normalized.metrics.spend / focusRowResults : 0,
+          result_type: agencyMetricFocus,
+          results: focusRowResults,
+          primary_result_type: primaryResult.type,
+          primary_result_value: primaryResult.value,
           creative_id: media.creative_id || null,
           creative_name: media.creative_name || null,
           image_url: media.image_url || null,
