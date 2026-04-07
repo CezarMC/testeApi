@@ -381,9 +381,9 @@ module.exports = async function handler(request, response) {
 
   const levelByType = { basico: "campaign", completo: "adset", detalhado: "ad" };
   const fieldsByType = {
-    basico: ["campaign_id", "campaign_name", "impressions", "reach", "clicks", "spend", "cpc", "ctr", "cpm", "frequency", "actions", "action_values", "unique_actions", "purchase_roas"],
-    completo: ["campaign_id", "campaign_name", "adset_id", "adset_name", "impressions", "reach", "clicks", "spend", "cpc", "ctr", "cpm", "frequency", "actions", "action_values", "unique_actions", "purchase_roas"],
-    detalhado: ["campaign_id", "campaign_name", "adset_id", "adset_name", "ad_id", "ad_name", "impressions", "reach", "clicks", "spend", "cpc", "ctr", "cpm", "frequency", "actions", "action_values", "unique_actions", "purchase_roas"]
+    basico: ["campaign_id", "campaign_name", "objective", "impressions", "reach", "clicks", "spend", "cpc", "ctr", "cpm", "frequency", "actions", "action_values", "unique_actions", "purchase_roas"],
+    completo: ["campaign_id", "campaign_name", "objective", "adset_id", "adset_name", "impressions", "reach", "clicks", "spend", "cpc", "ctr", "cpm", "frequency", "actions", "action_values", "unique_actions", "purchase_roas"],
+    detalhado: ["campaign_id", "campaign_name", "objective", "adset_id", "adset_name", "ad_id", "ad_name", "impressions", "reach", "clicks", "spend", "cpc", "ctr", "cpm", "frequency", "actions", "action_values", "unique_actions", "purchase_roas"]
   };
 
   const level = levelByType[reportType] || "campaign";
@@ -545,8 +545,9 @@ module.exports = async function handler(request, response) {
           focus_action_type: agencyMetricFocus,
           focus_results: focusRowResults,
           focus_cost: focusRowResults > 0 ? normalized.metrics.spend / focusRowResults : 0,
-          result_type: agencyMetricFocus,
-          results: focusRowResults,
+          objective: row.objective || "-",
+          result_type: focusRowResults > 0 ? agencyMetricFocus : (primaryResult.type || "-"),
+          results: focusRowResults > 0 ? focusRowResults : primaryResult.value,
           primary_result_type: primaryResult.type,
           primary_result_value: primaryResult.value,
           purchase_conversion_value: normalized.advanced.purchase_conversion_value,

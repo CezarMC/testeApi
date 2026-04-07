@@ -1545,7 +1545,7 @@ function clearMetrics() {
   cvObjectiveEl.textContent = "Sem dados.";
   cvStagesEl.innerHTML = "Sem dados.";
   cvTopAdsEl.innerHTML = "";
-  tableBodyEl.innerHTML = '<tr><td colspan="18">Sem dados ainda.</td></tr>';
+  tableBodyEl.innerHTML = '<tr><td colspan="19">Sem dados ainda.</td></tr>';
   adviceEl.textContent = "As dicas aparecerao aqui.";
   rawOutputEl.textContent = "Sem requisicao executada.";
   lastMetricsPayload = null;
@@ -1597,9 +1597,24 @@ function renderMediaCell(row) {
   return `<div style="display:flex;gap:8px;align-items:center;">${imagePart}${videoPart}</div>`;
 }
 
+function normalizeObjective(obj) {
+  const o = String(obj || "").toLowerCase();
+  if (!o || o === "-") return "-";
+  if (o.includes("lead")) return "Lead";
+  if (o.includes("outcome_leads")) return "Lead";
+  if (o.includes("purchase") || o.includes("conversions") || o.includes("outcome_sales")) return "Conversão";
+  if (o.includes("traffic") || o.includes("link_clicks")) return "Tráfego";
+  if (o.includes("messages") || o.includes("outcome_engagement")) return "Mensagens";
+  if (o.includes("reach") || o.includes("awareness") || o.includes("outcome_awareness")) return "Alcance";
+  if (o.includes("video")) return "Vídeo";
+  if (o.includes("engagement") || o.includes("post_engagement")) return "Engajamento";
+  if (o.includes("app")) return "App";
+  return obj;
+}
+
 function updateTable(rows) {
   if (!Array.isArray(rows) || rows.length === 0) {
-    tableBodyEl.innerHTML = '<tr><td colspan="18">Sem linhas para o periodo selecionado.</td></tr>';
+    tableBodyEl.innerHTML = '<tr><td colspan="19">Sem linhas para o periodo selecionado.</td></tr>';
     return;
   }
   tableBodyEl.innerHTML = rows.map((row) => `
@@ -1608,6 +1623,7 @@ function updateTable(rows) {
       <td data-label="Conjunto">${row.adset_name || "-"}</td>
       <td data-label="Anúncio">${row.ad_name || "-"}</td>
       <td data-label="Mídia">${renderMediaCell(row)}</td>
+      <td data-label="Objetivo">${escapeHtml(normalizeObjective(row.objective))}</td>
       <td data-label="Tipo">${row.item_type || "-"}</td>
       <td data-label="Público">${brInt(row.reach || 0)}</td>
       <td data-label="Impressões">${brInt(row.impressions || 0)}</td>
@@ -1621,7 +1637,7 @@ function updateTable(rows) {
       <td data-label="CPC link">${brMoney(row.link_cpc || 0)}</td>
       <td data-label="CPM">${brMoney(row.cpm || 0)}</td>
       <td data-label="Frequência">${Number(row.frequency || 0).toFixed(2).replace(".", ",")}</td>
-      <td data-label="Resultado">${brInt(row.results || row.leads || 0)} (${row.result_type || "-"})</td>
+      <td data-label="Resultado">${brInt(row.results || row.leads || 0)} (${escapeHtml(normalizeObjective(row.objective) !== "-" && (row.results || 0) === 0 ? normalizeObjective(row.objective) + " - sem conv." : normalizeResultType(row.result_type))})</td>
     </tr>
   `).join("");
 }
