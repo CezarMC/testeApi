@@ -38,8 +38,8 @@ module.exports = async function handler(request, response) {
 
   if (action === "save") {
     const token = String(body.token || "").trim();
-    if (!token || !token.startsWith("EAA")) {
-      return json(response, 400, { error: "Token Meta inválido. Deve começar com EAA." });
+    if (!token || token.length < 20 || /\s/.test(token)) {
+      return json(response, 400, { error: "Token Meta invalido. Verifique e tente novamente." });
     }
 
     const encryptedToken = encryptText(token);

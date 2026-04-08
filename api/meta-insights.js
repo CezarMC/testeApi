@@ -406,7 +406,7 @@ module.exports = async function handler(request, response) {
     const rows = [];
     let nextUrl = `${baseUrl}?${query.toString()}`;
     let pageCount = 0;
-    const MAX_PAGES = 10;
+    const MAX_PAGES = 30;
 
     while (nextUrl && pageCount < MAX_PAGES) {
       const metaResponse = await fetch(nextUrl);
@@ -423,6 +423,8 @@ module.exports = async function handler(request, response) {
       nextUrl = metaData.paging && metaData.paging.next ? metaData.paging.next : null;
       pageCount += 1;
     }
+
+    const wasTruncated = Boolean(nextUrl);
 
     const normalizedRows = rows.map((row) => {
       const metrics = calcRowMetrics(row);
@@ -574,6 +576,8 @@ module.exports = async function handler(request, response) {
         until,
         level,
         agencyMetricFocus,
+        fetchedPages: pageCount,
+        wasTruncated,
         graphApi: {
           endpoint: `/${apiVersion}/act_${adAccountId}/insights`,
           action_report_time: "conversion",

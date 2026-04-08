@@ -1,6 +1,9 @@
 {
   "version": 2,
   "functions": {
+    "api/meta-insights.js": {
+      "maxDuration": 30
+    },
     "api/**/*.js": {
       "maxDuration": 10
     }

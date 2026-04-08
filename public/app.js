@@ -1738,38 +1738,8 @@ function timeoutResult() {
   return { ok: false, status: 408, data: { error: "Tempo limite excedido. Tente novamente." } };
 }
 
-async function checkDocumentAvailability(document) {
-  try {
-    const res = await fetchWithTimeout("/api/user-identity", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "check", document })
-    }, 3500);
-    const data = await jsonFromResponse(res);
-    return { ok: res.ok, status: res.status, data };
-  } catch (error) {
-    if (error && error.name === "AbortError") return timeoutResult();
-    return { ok: false, status: 502, data: { error: "Falha de rede ao validar documento." } };
-  }
-}
-
 async function registerUserIdentity(document) {
   return apiPost("/api/user-identity", { action: "register", document });
-}
-
-async function resolveEmailFromDocument(document) {
-  try {
-    const res = await fetchWithTimeout("/api/user-identity", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "resolve", document })
-    }, 3500);
-    const data = await jsonFromResponse(res);
-    return { ok: res.ok, status: res.status, data };
-  } catch (error) {
-    if (error && error.name === "AbortError") return timeoutResult();
-    return { ok: false, status: 502, data: { error: "Falha de rede ao localizar conta." } };
-  }
 }
 
 async function registerPendingIdentity(user) {
@@ -1959,15 +1929,6 @@ async function signUp() {
     setEntryStatus("warn", "Informe um CPF ou CNPJ valido.");
     return;
   }
-  const docAvailability = await checkDocumentAvailability(parsedDocument.normalized);
-  if (!docAvailability.ok) {
-    setEntryStatus("err", docAvailability.data.error || "Nao foi possivel validar CPF/CNPJ.");
-    return;
-  }
-  if (!docAvailability.data.available) {
-    setEntryStatus("err", "CPF/CNPJ ja cadastrado em outra conta.");
-    return;
-  }
   if (!check.ok) {
     setEntryStatus("err", `Senha fraca: ${check.issues.join(", ")}.`);
     return;
@@ -2018,17 +1979,9 @@ async function signIn() {
   setLoginButtonLoading(true);
   try {
     if (!identifier.includes("@")) {
-      const parsed = parseDocument(identifier);
-      if (!parsed.ok) {
-        setEntryStatus("warn", "Use email valido ou CPF/CNPJ valido.");
-        return;
-      }
-      const resolved = await resolveEmailFromDocument(parsed.normalized);
-      if (!resolved.ok || !resolved.data?.email) {
-        setEntryStatus("err", "Login falhou. Verifique identificador e senha.");
-        return;
-      }
-      email = String(resolved.data.email || "").toLowerCase();
+      setEntryStatus("warn", "Login por CPF/CNPJ foi desativado por seguranca. Use seu e-mail.");
+      setEntryNextStep("se esqueceu o e-mail, entre em contato com o suporte.");
+      return;
     }
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {

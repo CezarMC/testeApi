@@ -66,40 +66,17 @@ module.exports = async function handler(request, response) {
     return json(response, 400, { error: error.message });
   }
 
-  const action = String(body.action || "").trim();
+  const action = String(body.action || "").trim().toLowerCase();
   const doc = parseDocument(body.document || "");
   if (!doc.ok) {
     return json(response, 400, { error: "Informe um CPF ou CNPJ valido." });
   }
 
   const admin = createAdminClient();
+  const { user } = await getAuthenticatedUser(request);
 
-  if (action === "resolve") {
-    const docHash = hashDocument(doc.normalized);
-    const { data, error } = await admin
-      .from("user_identities")
-      .select("user_id")
-      .eq("document_hash", docHash)
-      .maybeSingle();
-
-    if (error) {
-      return json(response, 500, { error: "Erro ao localizar documento.", detail: error.message });
-    }
-
-    if (!data?.user_id) {
-      return json(response, 404, { error: "Documento nao encontrado." });
-    }
-
-    const { data: userData, error: userError } = await admin.auth.admin.getUserById(data.user_id);
-    if (userError || !userData?.user?.email) {
-      return json(response, 404, { error: "Conta nao encontrada para este documento." });
-    }
-
-    return json(response, 200, {
-      ok: true,
-      email: String(userData.user.email || "").toLowerCase(),
-      type: doc.type
-    });
+  if (!user) {
+    return json(response, 401, { error: "Login necessario." });
   }
 
   if (action === "check") {
@@ -116,30 +93,25 @@ module.exports = async function handler(request, response) {
 
     return json(response, 200, {
       ok: true,
-      available: !data,
+      available: !data || data.user_id === user.id,
       type: doc.type
     });
   }
 
   if (action === "register") {
-    const { user } = await getAuthenticatedUser(request);
-    if (!user) {
-      return json(response, 401, { error: "Login necessario." });
-    }
-
     const docHash = hashDocument(doc.normalized);
 
-    const { data: existing, error: existingError } = await admin
+    const { data, error: lookupError } = await admin
       .from("user_identities")
       .select("user_id")
       .eq("document_hash", docHash)
       .maybeSingle();
 
-    if (existingError) {
-      return json(response, 500, { error: "Erro ao validar documento.", detail: existingError.message });
+    if (lookupError) {
+      return json(response, 500, { error: "Erro ao validar documento.", detail: lookupError.message });
     }
 
-    if (existing && existing.user_id !== user.id) {
+    if (data && data.user_id !== user.id) {
       return json(response, 409, { error: "CPF/CNPJ ja cadastrado em outra conta." });
     }
 
@@ -151,16 +123,16 @@ module.exports = async function handler(request, response) {
       updated_at: new Date().toISOString()
     };
 
-    const { error } = await admin
+    const { error: upsertError } = await admin
       .from("user_identities")
       .upsert(payload, { onConflict: "user_id" });
 
-    if (error) {
-      return json(response, 500, { error: "Erro ao salvar documento.", detail: error.message });
+    if (upsertError) {
+      return json(response, 500, { error: "Erro ao salvar documento.", detail: upsertError.message });
     }
 
     return json(response, 200, { ok: true, type: doc.type });
   }
 
-  return json(response, 400, { error: "Acao invalida. Use resolve, check ou register." });
+  return json(response, 400, { error: "Acao invalida. Use check ou register." });
 };
