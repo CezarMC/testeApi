@@ -47,27 +47,61 @@ function getServerProviderApiKey(provider) {
 }
 
 async function callAnthropic(prompt, apiKey) {
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01"
-    },
-    body: JSON.stringify({
-      model: "claude-3-5-sonnet-latest",
-      max_tokens: 500,
-      temperature: 0.2,
-      messages: [{ role: "user", content: prompt }]
-    })
-  });
+  const modelCandidates = [
+    "claude-3-5-sonnet-20241022",
+    "claude-3-5-haiku-20241022",
+    "claude-3-haiku-20240307"
+  ];
 
-  const data = await response.json();
+  let lastError = null;
+
+  for (const model of modelCandidates) {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01"
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 500,
+        temperature: 0.2,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+
+    const data = await response.json();
+    if (response.ok) {
+      return {
+        ok: true,
+        provider: "anthropic",
+        text: data?.content?.[0]?.text || "",
+        error: null,
+        modelUsed: model
+      };
+    }
+
+    lastError = data;
+    const errorType = String(data?.error?.type || "").toLowerCase();
+    const message = String(data?.error?.message || "").toLowerCase();
+    const isModelMissing = errorType === "not_found_error" || message.includes("model");
+    if (!isModelMissing) {
+      return {
+        ok: false,
+        provider: "anthropic",
+        text: "",
+        error: data,
+        modelUsed: model
+      };
+    }
+  }
+
   return {
-    ok: response.ok,
+    ok: false,
     provider: "anthropic",
-    text: data?.content?.[0]?.text || "",
-    error: data
+    text: "",
+    error: lastError || { error: { type: "not_found_error", message: "Nenhum modelo Anthropic compatível foi encontrado para esta key." } }
   };
 }
 
