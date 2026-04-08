@@ -184,6 +184,116 @@ function getFocusResultsFromTotals(actionTotals = {}, focusType = "lead") {
   return sumActionTotals(actionTotals, focusTypes);
 }
 
+function getFocusLabel(focusType = "lead") {
+  const type = String(focusType || "").trim().toLowerCase();
+  const labels = {
+    lead: "Leads",
+    leads: "Leads",
+    mensagem: "Mensagens",
+    mensagens: "Mensagens",
+    message: "Mensagens",
+    messages: "Mensagens",
+    contato: "Contatos",
+    contact: "Contatos",
+    purchase: "Compras",
+    purchases: "Compras",
+    compra: "Compras",
+    compras: "Compras",
+    checkout: "Checkouts",
+    initiate_checkout: "Checkouts",
+    add_to_cart: "Carrinhos",
+    carrinho: "Carrinhos",
+    cadastro: "Cadastros",
+    registration: "Cadastros",
+    complete_registration: "Cadastros"
+  };
+  return labels[type] || "Resultados";
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function buildKpis(summary = {}, focusType = "lead") {
+  const spend = safeNumber(summary.spend);
+  const impressions = safeNumber(summary.impressions);
+  const reach = safeNumber(summary.reach);
+  const clicks = safeNumber(summary.clicks);
+  const leads = safeNumber(summary.leads);
+  const ctr = safeNumber(summary.ctr);
+  const cpc = safeNumber(summary.cpc);
+  const cpm = safeNumber(summary.cpm);
+  const frequency = safeNumber(summary.frequency);
+
+  const advanced = summary.advanced || {};
+  const focusResults = safeNumber(summary.focus_results);
+  const focusCost = focusResults > 0 ? spend / focusResults : 0;
+  const linkClicks = safeNumber(advanced.link_clicks);
+  const outboundClicks = safeNumber(advanced.outbound_clicks);
+  const linkCtr = safeNumber(advanced.link_ctr);
+  const outboundCtr = safeNumber(advanced.outbound_ctr);
+  const linkCpc = safeNumber(advanced.link_cpc);
+  const lpv = safeNumber(advanced.landing_page_view);
+  const purchaseValue = safeNumber(advanced.purchase_conversion_value);
+  const purchaseRoas = safeNumber(advanced.purchase_roas);
+
+  const clickToFocusRate = clicks > 0 ? (focusResults / clicks) * 100 : 0;
+  const linkToFocusRate = linkClicks > 0 ? (focusResults / linkClicks) * 100 : 0;
+  const lpvToFocusRate = lpv > 0 ? (focusResults / lpv) * 100 : 0;
+
+  return {
+    focus_action_type: focusType,
+    focus_label: getFocusLabel(focusType),
+    spend,
+    impressions,
+    reach,
+    frequency,
+    clicks,
+    leads,
+    ctr,
+    cpc,
+    cpm,
+    link_clicks: linkClicks,
+    outbound_clicks: outboundClicks,
+    link_ctr: linkCtr,
+    outbound_ctr: outboundCtr,
+    link_cpc: linkCpc,
+    landing_page_view: lpv,
+    focus_results: focusResults,
+    focus_cost: focusCost,
+    click_to_focus_rate: clickToFocusRate,
+    link_to_focus_rate: linkToFocusRate,
+    lpv_to_focus_rate: lpvToFocusRate,
+    purchase_conversion_value: purchaseValue,
+    purchase_roas: purchaseRoas
+  };
+}
+
+function buildHealthScore(kpis = {}) {
+  const ctrScore = clamp((safeNumber(kpis.ctr) / 2) * 100, 0, 100);
+  const linkCtrScore = clamp((safeNumber(kpis.link_ctr) / 1.5) * 100, 0, 100);
+  const focusRateScore = clamp((safeNumber(kpis.click_to_focus_rate) / 4) * 100, 0, 100);
+  const freqPenalty = clamp((safeNumber(kpis.frequency) - 3) * 15, 0, 40);
+
+  const weighted = (ctrScore * 0.28) + (linkCtrScore * 0.27) + (focusRateScore * 0.30) + (100 * 0.15);
+  const score = clamp(weighted - freqPenalty, 0, 100);
+
+  let tier = "fraco";
+  if (score >= 75) tier = "forte";
+  else if (score >= 55) tier = "estavel";
+
+  return {
+    score: Math.round(score),
+    tier,
+    inputs: {
+      ctr: safeNumber(kpis.ctr),
+      link_ctr: safeNumber(kpis.link_ctr),
+      click_to_focus_rate: safeNumber(kpis.click_to_focus_rate),
+      frequency: safeNumber(kpis.frequency)
+    }
+  };
+}
+
 function buildAdvancedFromTotals(actionTotals = {}, actionValueTotals = {}, uniqueActionTotals = {}, spend = 0, impressions = 0, clicks = 0, leads = 0, focusType = "lead") {
   const linkClicks = sumActionTotals(actionTotals, ["link_click", "inline_link_click"]);
   const landingPageView = sumActionTotals(actionTotals, ["landing_page_view"]);
@@ -320,6 +430,38 @@ async function fetchAdMediaMap(apiVersion, accessToken, adIds) {
   }
 }
 
+async function fetchActiveCampaignIds(apiVersion, accessToken, adAccountId) {
+  const ids = new Set();
+  const query = new URLSearchParams();
+  query.set("access_token", accessToken);
+  query.set("fields", "id,effective_status");
+  query.set("limit", "200");
+
+  let nextUrl = `https://graph.facebook.com/${apiVersion}/act_${adAccountId}/campaigns?${query.toString()}`;
+  let pageCount = 0;
+  const MAX_PAGES = 20;
+
+  while (nextUrl && pageCount < MAX_PAGES) {
+    const response = await fetch(nextUrl);
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data?.error?.message || "Falha ao listar campanhas da conta.");
+    }
+
+    const items = Array.isArray(data?.data) ? data.data : [];
+    items.forEach((campaign) => {
+      const id = String(campaign?.id || "").trim();
+      const status = String(campaign?.effective_status || "").trim().toUpperCase();
+      if (id && status === "ACTIVE") ids.add(id);
+    });
+
+    nextUrl = data?.paging?.next || null;
+    pageCount += 1;
+  }
+
+  return ids;
+}
+
 module.exports = async function handler(request, response) {
   if (request.method !== "POST") {
     return json(response, 405, { error: "Use POST." });
@@ -379,6 +521,13 @@ module.exports = async function handler(request, response) {
 
   const accessToken = decryptText(tokenRow.encrypted_token);
 
+  let activeCampaignIds;
+  try {
+    activeCampaignIds = await fetchActiveCampaignIds(apiVersion, accessToken, adAccountId);
+  } catch (error) {
+    return json(response, 502, { error: "Falha ao listar campanhas ativas da Meta.", detail: error.message });
+  }
+
   const levelByType = { basico: "campaign", completo: "adset", detalhado: "ad" };
   const fieldsByType = {
     basico: ["campaign_id", "campaign_name", "objective", "impressions", "reach", "clicks", "spend", "cpc", "ctr", "cpm", "frequency", "actions", "action_values", "unique_actions", "purchase_roas"],
@@ -417,7 +566,12 @@ module.exports = async function handler(request, response) {
       }
 
       if (Array.isArray(metaData.data)) {
-        rows.push(...metaData.data);
+        metaData.data.forEach((row) => {
+          const campaignId = String(row?.campaign_id || "").trim();
+          if (campaignId && activeCampaignIds.has(campaignId)) {
+            rows.push(row);
+          }
+        });
       }
 
       nextUrl = metaData.paging && metaData.paging.next ? metaData.paging.next : null;
@@ -493,6 +647,8 @@ module.exports = async function handler(request, response) {
       agencyMetricFocus
     );
     summary.purchase_conversion_value = summary.advanced.purchase_conversion_value;
+    summary.kpis = buildKpis(summary, agencyMetricFocus);
+    summary.health = buildHealthScore(summary.kpis);
 
     // Breakdown de conversões para diagnóstico no painel
     const conversionBreakdown = Object.entries(summary.actionTotals)
@@ -584,6 +740,8 @@ module.exports = async function handler(request, response) {
           use_account_attribution_setting: true,
           fields
         },
+        activeCampaignsOnly: true,
+        activeCampaignCount: activeCampaignIds.size,
         conversionBreakdown,
         totalRows: rows.length
       },

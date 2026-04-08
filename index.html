@@ -1600,6 +1600,18 @@
 							<option value="detalhado">Detalhado</option>
 						</select>
 					</div>
+					<div style="flex:1; min-width:200px;">
+						<label for="agencyMetricFocus">Foco de resultado</label>
+						<select id="agencyMetricFocus" style="width:100%;">
+							<option value="lead">Leads</option>
+							<option value="mensagem">Mensagens</option>
+							<option value="contato">Contatos</option>
+							<option value="purchase">Compras</option>
+							<option value="checkout">Checkouts</option>
+							<option value="add_to_cart">Carrinhos</option>
+							<option value="cadastro">Cadastros</option>
+						</select>
+					</div>
 				</div>
 				<div class="chips" style="margin-top:8px; flex-wrap:wrap;">
 					<button id="dateQuick7" class="btn btn-chip" type="button">7 dias</button>
@@ -1631,10 +1643,10 @@
 			<div class="cards">
 				<div class="card"><div class="k">Gasto</div><div class="v" id="kSpend">R$ 0,00</div></div>
 				<div class="card"><div class="k">Cliques</div><div class="v" id="kClicks">0</div></div>
-				<div class="card"><div class="k">Leads</div><div class="v" id="kLeads">0</div></div>
+				<div class="card"><div class="k" id="kFocusLabel">Resultados foco</div><div class="v" id="kLeads">0</div></div>
 				<div class="card"><div class="k">CTR</div><div class="v" id="kCtr">0,00%</div></div>
 				<div class="card"><div class="k">CPC</div><div class="v" id="kCpc">R$ 0,00</div></div>
-				<div class="card"><div class="k">CPL</div><div class="v" id="kCpl">R$ 0,00</div></div>
+				<div class="card"><div class="k" id="kFocusCostLabel">Custo por resultado</div><div class="v" id="kCpl">R$ 0,00</div></div>
 				<div class="card"><div class="k">CTR link</div><div class="v" id="kLinkCtr">0,00%</div></div>
 				<div class="card"><div class="k">CPM</div><div class="v" id="kCpm">R$ 0,00</div></div>
 				<div class="card"><div class="k">Conversas 7d</div><div class="v" id="kMsgStart7d">0</div></div>
@@ -1642,7 +1654,7 @@
 				<div class="card"><div class="k">Impressões</div><div class="v" id="kImpressions">0</div></div>
 				<div class="card"><div class="k">Frequência</div><div class="v" id="kFrequency">0,00</div></div>
 				<div class="card"><div class="k">Resultado principal</div><div class="v" id="kResults">0</div></div>
-				<div class="card"><div class="k">Tipo de resultado</div><div class="v" id="kResultType">-</div></div>
+				<div class="card"><div class="k">Saúde da performance</div><div class="v" id="kResultType">-</div></div>
 				<div class="card"><div class="k">Investimento diário</div><div class="v" id="kDailySpend">R$ 0,00</div></div>
 			</div>
 

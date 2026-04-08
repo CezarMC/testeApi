@@ -196,6 +196,7 @@ const clientNameEl = document.getElementById("clientName");
 const adAccountIdEl = document.getElementById("adAccountId");
 const apiVersionEl = document.getElementById("apiVersion");
 const reportTypeEl = document.getElementById("reportType");
+const agencyMetricFocusEl = document.getElementById("agencyMetricFocus");
 const tableBodyEl = document.getElementById("tableBody");
 const adviceEl = document.getElementById("advice");
 const rawOutputEl = document.getElementById("rawOutput");
@@ -233,9 +234,11 @@ const aiChatCloseBtnEl = document.getElementById("aiChatCloseBtn");
 
 const kSpendEl = document.getElementById("kSpend");
 const kClicksEl = document.getElementById("kClicks");
+const kFocusLabelEl = document.getElementById("kFocusLabel");
 const kLeadsEl = document.getElementById("kLeads");
 const kCtrEl = document.getElementById("kCtr");
 const kCpcEl = document.getElementById("kCpc");
+const kFocusCostLabelEl = document.getElementById("kFocusCostLabel");
 const kCplEl = document.getElementById("kCpl");
 const kLinkCtrEl = document.getElementById("kLinkCtr");
 const kCpmEl = document.getElementById("kCpm");
@@ -482,6 +485,36 @@ function normalizeResultType(type) {
   return type || "-";
 }
 
+function getSelectedMetricFocus() {
+  const value = String(agencyMetricFocusEl?.value || "lead").trim().toLowerCase();
+  return value || "lead";
+}
+
+function getFocusLabel(focus) {
+  const map = {
+    lead: "Leads",
+    leads: "Leads",
+    mensagem: "Mensagens",
+    mensagens: "Mensagens",
+    message: "Mensagens",
+    messages: "Mensagens",
+    contato: "Contatos",
+    contact: "Contatos",
+    purchase: "Compras",
+    purchases: "Compras",
+    compra: "Compras",
+    compras: "Compras",
+    checkout: "Checkouts",
+    initiate_checkout: "Checkouts",
+    add_to_cart: "Carrinhos",
+    carrinho: "Carrinhos",
+    cadastro: "Cadastros",
+    registration: "Cadastros",
+    complete_registration: "Cadastros"
+  };
+  return map[String(focus || "").toLowerCase()] || "Resultados";
+}
+
 function toPercent(value) {
   return `${Number(value || 0).toFixed(2).replace(".", ",")}%`;
 }
@@ -568,7 +601,7 @@ async function fetchMetricsSummaryForRange(selectedClientOption, dateStart, date
     dateStart,
     dateEnd,
     reportType: reportTypeEl.value,
-    agencyMetricFocus: "lead"
+    agencyMetricFocus: getSelectedMetricFocus()
   };
   const result = await apiPost("/api/meta-insights", payload);
   if (!result.ok || !result.data?.ok) {
@@ -610,15 +643,21 @@ async function compareMonths() {
 
     const currentCtr = Number(currentSummary.ctr || 0);
     const previousCtr = Number(previousSummary.ctr || 0);
-    const currentCpc = Number(currentSummary.cpc || 0);
-    const previousCpc = Number(previousSummary.cpc || 0);
+    const currentCpc = Number(currentSummary.kpis?.cpc ?? currentSummary.cpc || 0);
+    const previousCpc = Number(previousSummary.kpis?.cpc ?? previousSummary.cpc || 0);
+    const currentFocusResults = Number(currentSummary.kpis?.focus_results ?? currentSummary.focus_results ?? currentSummary.leads || 0);
+    const previousFocusResults = Number(previousSummary.kpis?.focus_results ?? previousSummary.focus_results ?? previousSummary.leads || 0);
+    const currentFocusCost = Number(currentSummary.kpis?.focus_cost ?? currentSummary.focus_cost ?? currentSummary.cpl || 0);
+    const previousFocusCost = Number(previousSummary.kpis?.focus_cost ?? previousSummary.focus_cost ?? previousSummary.cpl || 0);
+    const focusLabel = String(currentSummary.kpis?.focus_label || getFocusLabel(getSelectedMetricFocus()));
 
     monthCompareChartEl.innerHTML = [
       renderMonthCompareCard("Gasto", Number(currentSummary.spend || 0), Number(previousSummary.spend || 0), brMoney),
       renderMonthCompareCard("Cliques", Number(currentSummary.clicks || 0), Number(previousSummary.clicks || 0), brInt),
-      renderMonthCompareCard("Leads", Number(currentSummary.leads || 0), Number(previousSummary.leads || 0), brInt),
+      renderMonthCompareCard(focusLabel, currentFocusResults, previousFocusResults, brInt),
       renderMonthCompareCard("CTR", currentCtr, previousCtr, toPercent),
       renderMonthCompareCard("CPC", currentCpc, previousCpc, brMoney, true),
+      renderMonthCompareCard("Custo por resultado", currentFocusCost, previousFocusCost, brMoney, true),
       renderMonthCompareCard("CPM", Number(currentSummary.cpm || 0), Number(previousSummary.cpm || 0), brMoney, true)
     ].join("");
 
@@ -631,38 +670,43 @@ async function compareMonths() {
 function renderMetricsCharts(summary = {}) {
   if (!metricsVolumeChartEl || !metricsEfficiencyChartEl || !metricsTrendChartEl || !metricsTrendHintEl) return;
 
-  const spend = Number(summary.spend || 0);
-  const clicks = Number(summary.clicks || 0);
-  const leads = Number(summary.leads || 0);
-  const impressions = Number(summary.impressions || 0);
+  const kpis = summary?.kpis || {};
+  const spend = Number(kpis.spend ?? summary.spend || 0);
+  const clicks = Number(kpis.clicks ?? summary.clicks || 0);
+  const focusResults = Number(kpis.focus_results ?? summary.focus_results ?? summary.leads || 0);
+  const impressions = Number(kpis.impressions ?? summary.impressions || 0);
+  const focusLabel = String(kpis.focus_label || getFocusLabel(kpis.focus_action_type || getSelectedMetricFocus()));
 
   const volumeItems = [
     { label: "Gasto", value: spend, text: brMoney(spend), tone: "a" },
     { label: "Impressões", value: impressions, text: brInt(impressions), tone: "d" },
     { label: "Cliques", value: clicks, text: brInt(clicks), tone: "b" },
-    { label: "Leads", value: leads, text: brInt(leads), tone: "c" }
+    { label: focusLabel, value: focusResults, text: brInt(focusResults), tone: "c" }
   ];
   const maxVolume = Math.max(...volumeItems.map((item) => Number(item.value || 0)), 0.0001);
   metricsVolumeChartEl.innerHTML = volumeItems
     .map((item) => chartRowHtml(item.label, item.text, (Number(item.value || 0) / maxVolume) * 100, item.tone))
     .join("");
 
-  const ctr = Number(summary.ctr || 0);
-  const linkCtr = Number(summary.advanced?.link_ctr || 0);
-  const cpc = Number(summary.cpc || 0);
-  const cpl = Number(summary.cpl || 0);
-  const cpm = Number(summary.cpm || 0);
+  const ctr = Number(kpis.ctr ?? summary.ctr || 0);
+  const linkCtr = Number(kpis.link_ctr ?? summary.advanced?.link_ctr || 0);
+  const cpc = Number(kpis.cpc ?? summary.cpc || 0);
+  const cpr = Number(kpis.focus_cost ?? summary.focus_cost ?? summary.cpl || 0);
+  const cpm = Number(kpis.cpm ?? summary.cpm || 0);
+  const clickToFocusRate = Number(kpis.click_to_focus_rate || 0);
 
   const ctrTarget = 2;
   const cpcTarget = 3;
-  const cplTarget = 25;
+  const cprTarget = 25;
   const cpmTarget = 35;
+  const clickToFocusTarget = 4;
 
   const efficiencyRows = [
     chartRowHtml("CTR", toPercent(ctr), Math.min(100, (ctr / ctrTarget) * 100), "a"),
     chartRowHtml("CTR link", toPercent(linkCtr), Math.min(100, (linkCtr / ctrTarget) * 100), "b"),
+    chartRowHtml(`Conversão clique → ${focusLabel.toLowerCase()}`, toPercent(clickToFocusRate), Math.min(100, (clickToFocusRate / clickToFocusTarget) * 100), "d"),
     chartRowHtml("CPC", brMoney(cpc), Math.max(5, 100 - Math.min(100, (cpc / cpcTarget) * 100)), "c"),
-    chartRowHtml("CPL", brMoney(cpl), Math.max(5, 100 - Math.min(100, (cpl / cplTarget) * 100)), "d"),
+    chartRowHtml("Custo por resultado", brMoney(cpr), Math.max(5, 100 - Math.min(100, (cpr / cprTarget) * 100)), "b"),
     chartRowHtml("CPM", brMoney(cpm), Math.max(5, 100 - Math.min(100, (cpm / cpmTarget) * 100)), "a")
   ];
   metricsEfficiencyChartEl.innerHTML = efficiencyRows.join("");
@@ -939,33 +983,16 @@ function detectFunnelStage(row) {
 }
 
 function computeExecutiveMetrics(rows, summary, periodDays) {
-  const hasFocus = Boolean(summary && summary.focus_action_type);
-  let totalResults = Number(summary.total_results || 0);
-  let dominantResultType = summary.result_type || "-";
-  let dominantResultValue = totalResults;
-
-  if (!hasFocus) {
-    const resultByType = {};
-    rows.forEach((row) => {
-      const type = row.result_type || "-";
-      const value = Number(row.results || 0);
-      resultByType[type] = (resultByType[type] || 0) + value;
-    });
-    dominantResultType = summary.result_type || "-";
-    dominantResultValue = 0;
-    Object.entries(resultByType).forEach(([type, value]) => {
-      if (value > dominantResultValue) {
-        dominantResultValue = value;
-        dominantResultType = type;
-      }
-    });
-    totalResults = Number(summary.total_results || dominantResultValue || 0);
-  }
-
-  const reach = Number(summary.reach || 0);
-  const impressions = Number(summary.impressions || 0);
-  const frequency = reach > 0 ? impressions / reach : 0;
-  const dailySpend = Number(summary.spend || 0) / Math.max(1, periodDays);
+  const kpis = summary?.kpis || {};
+  const reach = Number(kpis.reach ?? summary.reach || 0);
+  const impressions = Number(kpis.impressions ?? summary.impressions || 0);
+  const frequency = Number(kpis.frequency ?? summary.frequency || 0);
+  const spend = Number(kpis.spend ?? summary.spend || 0);
+  const dailySpend = spend / Math.max(1, periodDays);
+  const totalResults = Number(kpis.focus_results ?? summary.focus_results ?? summary.total_results || 0);
+  const focusType = String(kpis.focus_action_type || summary.focus_action_type || "lead");
+  const focusLabel = String(kpis.focus_label || getFocusLabel(focusType));
+  const health = summary?.health || { score: 0, tier: "fraco" };
 
   return {
     reach,
@@ -973,8 +1000,10 @@ function computeExecutiveMetrics(rows, summary, periodDays) {
     frequency,
     dailySpend,
     totalResults,
-    dominantResultType,
-    dominantResultValue
+    focusType,
+    focusLabel,
+    healthScore: Number(health.score || 0),
+    healthTier: String(health.tier || "fraco")
   };
 }
 
@@ -986,10 +1015,13 @@ function updateExecutiveBlocks(rows, summary, context = {}, dateStart, dateEnd) 
   kImpressionsEl.textContent = brInt(exec.impressions);
   kFrequencyEl.textContent = Number(exec.frequency).toFixed(2).replace(".", ",");
   kResultsEl.textContent = brInt(exec.totalResults);
-  kResultTypeEl.textContent = normalizeResultType(exec.dominantResultType);
+  kResultTypeEl.textContent = `${exec.healthTier} (${exec.healthScore}/100)`;
   kDailySpendEl.textContent = brMoney(exec.dailySpend);
 
-  const objectiveText = `Período analisado: ${periodDays} dia(s). Foco principal em ${normalizeResultType(exec.dominantResultType)} com ${brInt(exec.totalResults)} resultado(s). Público atingido: ${brInt(exec.reach)} e ${brInt(exec.impressions)} impressões.`;
+  const ctr = Number(summary?.kpis?.ctr ?? summary?.ctr || 0);
+  const linkCtr = Number(summary?.kpis?.link_ctr ?? summary?.advanced?.link_ctr || 0);
+  const focusCost = Number(summary?.kpis?.focus_cost ?? summary?.focus_cost || 0);
+  const objectiveText = `Período analisado: ${periodDays} dia(s). Foco em ${exec.focusLabel} com ${brInt(exec.totalResults)} resultado(s). Custo por resultado: ${brMoney(focusCost)}. Qualidade: CTR ${toPercent(ctr)} | CTR link ${toPercent(linkCtr)} | Saúde ${exec.healthScore}/100 (${exec.healthTier}). Público atingido: ${brInt(exec.reach)} e ${brInt(exec.impressions)} impressões.`;
   objectiveSummaryEl.textContent = objectiveText;
 
   const stageAgg = {
@@ -1035,18 +1067,20 @@ function updateExecutiveBlocks(rows, summary, context = {}, dateStart, dateEnd) 
 }
 
 function getClientViewIndicators() {
+  const focusLabel = String(kFocusLabelEl?.textContent || "Resultados foco");
+  const focusCostLabel = String(kFocusCostLabelEl?.textContent || "Custo por resultado");
   return [
     ["Gasto total", kSpendEl.textContent],
     ["Investimento diário", kDailySpendEl.textContent],
     ["Público atingido", kReachEl.textContent],
     ["Impressões", kImpressionsEl.textContent],
     ["Cliques", kClicksEl.textContent],
-    ["Leads", kLeadsEl.textContent],
+    [focusLabel, kLeadsEl.textContent],
     ["CTR", kCtrEl.textContent],
     ["CTR link", kLinkCtrEl.textContent],
     ["CPC", kCpcEl.textContent],
     ["CPM", kCpmEl.textContent],
-    ["CPL", kCplEl.textContent],
+    [focusCostLabel, kCplEl.textContent],
     ["Conversas 7d", kMsgStart7dEl.textContent],
     ["Frequência", kFrequencyEl.textContent],
     ["Resultado principal", kResultsEl.textContent],
@@ -2305,6 +2339,8 @@ async function removeSelectedMetricsClients() {
 }
 
 function clearMetrics() {
+  if (kFocusLabelEl) kFocusLabelEl.textContent = "Resultados foco";
+  if (kFocusCostLabelEl) kFocusCostLabelEl.textContent = "Custo por resultado";
   kSpendEl.textContent = brMoney(0);
   kClicksEl.textContent = brInt(0);
   kLeadsEl.textContent = brInt(0);
@@ -2340,14 +2376,21 @@ function clearMetrics() {
 }
 
 function updateCards(summary) {
-  kSpendEl.textContent = brMoney(summary.spend);
-  kClicksEl.textContent = brInt(summary.clicks);
-  kLeadsEl.textContent = brInt(summary.leads);
-  kCtrEl.textContent = `${Number(summary.ctr || 0).toFixed(2).replace(".", ",")}%`;
-  kCpcEl.textContent = brMoney(summary.cpc);
-  kCplEl.textContent = brMoney(summary.cpl);
-  kLinkCtrEl.textContent = toPercent(summary.advanced?.link_ctr || 0);
-  kCpmEl.textContent = brMoney(summary.cpm || 0);
+  const kpis = summary?.kpis || {};
+  const focusType = String(kpis.focus_action_type || summary.focus_action_type || getSelectedMetricFocus());
+  const focusLabel = String(kpis.focus_label || getFocusLabel(focusType));
+
+  if (kFocusLabelEl) kFocusLabelEl.textContent = focusLabel;
+  if (kFocusCostLabelEl) kFocusCostLabelEl.textContent = `Custo por ${focusLabel.slice(0, -1) || "resultado"}`;
+
+  kSpendEl.textContent = brMoney(kpis.spend ?? summary.spend || 0);
+  kClicksEl.textContent = brInt(kpis.clicks ?? summary.clicks || 0);
+  kLeadsEl.textContent = brInt(kpis.focus_results ?? summary.focus_results ?? summary.leads || 0);
+  kCtrEl.textContent = `${Number(kpis.ctr ?? summary.ctr || 0).toFixed(2).replace(".", ",")}%`;
+  kCpcEl.textContent = brMoney(kpis.cpc ?? summary.cpc || 0);
+  kCplEl.textContent = brMoney(kpis.focus_cost ?? summary.focus_cost ?? summary.cpl || 0);
+  kLinkCtrEl.textContent = toPercent(kpis.link_ctr ?? summary.advanced?.link_ctr || 0);
+  kCpmEl.textContent = brMoney(kpis.cpm ?? summary.cpm || 0);
   kMsgStart7dEl.textContent = brInt(summary.advanced?.messaging_conversation_started_7d || 0);
 }
 
@@ -2436,7 +2479,7 @@ async function loadMetrics() {
     dateStart,
     dateEnd,
     reportType: reportTypeEl.value,
-    agencyMetricFocus: "lead"
+    agencyMetricFocus: getSelectedMetricFocus()
   };
   rawOutputEl.textContent = "Carregando...";
   const result = await apiPost("/api/meta-insights", payload);
@@ -2466,7 +2509,7 @@ async function loadMetrics() {
   lastMetricsPayload = {
     clientName: selected.dataset.name || "Cliente",
     reportType: reportTypeEl.value,
-    agencyMetricFocus: "lead",
+    agencyMetricFocus: getSelectedMetricFocus(),
     periodDays,
     dateStart,
     dateEnd,
@@ -2913,6 +2956,12 @@ function bindEvents() {
       clearMetrics();
       setMainNextStep("cliente definido. Agora clique em Atualizar metricas.");
       updateMetricsRemoveToggleText();
+    });
+  }
+  if (agencyMetricFocusEl) {
+    agencyMetricFocusEl.addEventListener("change", () => {
+      clearMetrics();
+      setMainNextStep("foco alterado. Clique em Atualizar metricas para recalcular os KPIs.");
     });
   }
   updateMetricsRemoveToggleText();
