@@ -319,7 +319,7 @@ module.exports = async function handler(request, response) {
     if (!providerResponse.ok) {
       return json(response, 200, {
         ok: true,
-        mode: "fallback",
+          mode: resolvedProvider,
         provider: resolvedProvider,
         availableProviders: getAvailableProviders(),
         advice: fallbackAdvice(metrics, reportType, periodDays, clientName, userName, question, rows, selectedCampaign),
@@ -337,7 +337,7 @@ module.exports = async function handler(request, response) {
   } catch (error) {
     return json(response, 200, {
       ok: true,
-      mode: "fallback",
+        mode: resolvedProvider,
       provider: resolvedProvider,
       availableProviders: getAvailableProviders(),
       advice: fallbackAdvice(metrics, reportType, periodDays, clientName, userName, question, rows, selectedCampaign),
