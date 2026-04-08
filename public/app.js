@@ -2296,19 +2296,30 @@ function getAdviceUserName() {
 }
 
 async function loadAdvice(extra = {}) {
-  if (!lastMetricsPayload) {
-    setStatus("warn", "Atualize metricas antes de pedir recomendacoes.");
+  const question = String(extra.question || "").trim();
+  if (!lastMetricsPayload && !question) {
+    setStatus("warn", "Atualize metricas para análise ou faça uma pergunta geral para a IA.");
     return;
   }
 
   openAiChatWindow();
   adviceEl.textContent = "Gerando recomendacoes...";
+  const basePayload = lastMetricsPayload || {
+    clientName: "",
+    reportType: "geral",
+    agencyMetricFocus: "",
+    dateStart: null,
+    dateEnd: null,
+    metrics: {},
+    rows: [],
+    selectedCampaign: null
+  };
   const payload = {
-    ...lastMetricsPayload,
-    selectedCampaign: getSelectedCampaignDetail(),
+    ...basePayload,
+    selectedCampaign: lastMetricsPayload ? getSelectedCampaignDetail() : null,
     aiProvider: getResolvedAiProvider(),
     userName: getAdviceUserName(),
-    objectiveSummary: objectiveSummaryEl ? objectiveSummaryEl.textContent.trim() : "",
+    objectiveSummary: lastMetricsPayload && objectiveSummaryEl ? objectiveSummaryEl.textContent.trim() : "",
     ...extra
   };
   const result = await apiPost("/api/claude-helper", payload);
@@ -2342,7 +2353,7 @@ async function loadAdvice(extra = {}) {
     "",
     `Próxima ação: ${advice.nextAction || "-"}`
   ].filter(Boolean).join("\n");
-  setMainNextStep("revise as recomendacoes e ajuste as campanhas.");
+  setMainNextStep(lastMetricsPayload ? "revise as recomendacoes e ajuste as campanhas." : "leia a resposta da IA e aprofunde a pergunta se precisar.");
 }
 
 function exportExecutivePdf() {

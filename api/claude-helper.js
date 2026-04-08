@@ -165,7 +165,7 @@ function parseStructuredAdvice(text, userName) {
     return JSON.parse(text);
   } catch (_) {
     return {
-      greeting: `${firstNameOf(userName)}, recebi a análise da IA em formato livre.`,
+      greeting: `${firstNameOf(userName)}, recebi a resposta da IA em formato livre.`,
       summary: text || "Resposta sem JSON estruturado.",
       diagnosis: [],
       alerts: [],
@@ -229,7 +229,52 @@ function topRowInsights(rows) {
   return { bySpend, byResults };
 }
 
+function hasMetricsContext(metrics, rows, campaignDetail, objectiveSummary, clientName) {
+  const safeMetrics = metrics && typeof metrics === "object" ? metrics : {};
+  const metricValues = Object.values(safeMetrics).some((value) => Number(value || 0) > 0);
+  return Boolean(
+    metricValues ||
+    (Array.isArray(rows) && rows.length) ||
+    (campaignDetail && typeof campaignDetail === "object") ||
+    String(objectiveSummary || "").trim() ||
+    String(clientName || "").trim()
+  );
+}
+
+function fallbackGeneralAdvice(userName, question) {
+  const userFirstName = firstNameOf(userName);
+  const cleanQuestion = String(question || "").trim();
+  return {
+    greeting: `${userFirstName}, respondi sua pergunta em modo geral.` ,
+    summary: cleanQuestion
+      ? `Pergunta recebida: ${cleanQuestion}`
+      : "Posso responder perguntas gerais sobre marketing, negócios, métricas e operação.",
+    diagnosis: cleanQuestion
+      ? ["A pergunta não depende de um relatório carregado, então a resposta pode ser direta."]
+      : ["Nenhuma pergunta específica foi enviada."] ,
+    alerts: [],
+    recommendations: cleanQuestion
+      ? [
+          "Se quiser profundidade maior, peça passo a passo, exemplo prático ou checklist.",
+          "Se quiser conectar a resposta com suas campanhas, atualize as métricas antes da pergunta.",
+          `Tema atual: ${cleanQuestion}`
+        ]
+      : [
+          "Pergunte qualquer tema de marketing, anúncios, copy, funil, vendas ou operação.",
+          "Se quiser análise de campanha, primeiro carregue as métricas do cliente."
+        ],
+    nextAction: cleanQuestion
+      ? "Se quiser, faça uma segunda pergunta mais específica para aprofundar a resposta."
+      : "Envie uma pergunta direta para começar."
+  };
+}
+
 function fallbackAdvice(metrics, reportType, periodDays, clientName, userName, question, rows, campaignDetail) {
+  const objectiveSummary = "";
+  if (!hasMetricsContext(metrics, rows, campaignDetail, objectiveSummary, clientName) && question) {
+    return fallbackGeneralAdvice(userName, question);
+  }
+
   const spend = Number(metrics.spend || 0);
   const ctr = Number(metrics.ctr || 0);
   const cpc = Number(metrics.cpc || 0);
@@ -306,6 +351,7 @@ module.exports = async function handler(request, response) {
   const metrics = body.metrics && typeof body.metrics === "object" ? body.metrics : {};
   const rows = Array.isArray(body.rows) ? body.rows : [];
   const selectedCampaign = body.selectedCampaign && typeof body.selectedCampaign === "object" ? body.selectedCampaign : null;
+  const generalMode = !hasMetricsContext(metrics, rows, selectedCampaign, objectiveSummary, clientName);
   const requestedProvider = String(body.aiProvider || "").trim().toLowerCase();
   const requestedOrDefaultProvider = requestedProvider || "anthropic";
   const userProviderApiKey = await getUserProviderApiKey(user.id, requestedOrDefaultProvider);
@@ -328,7 +374,8 @@ module.exports = async function handler(request, response) {
   const compactSelectedCampaign = compactCampaignDetail(selectedCampaign);
 
   const prompt = [
-    "Você é um analista de mídia paga em português do Brasil.",
+    "Você é um assistente de marketing e negócios em português do Brasil.",
+    "Quando houver métricas ou campanha carregada, atue como analista de mídia paga. Quando a pergunta for geral, responda normalmente como uma IA geral, sem forçar análise de métricas.",
     "Responda de forma objetiva, humana e acionável para pequeno negócio.",
     `Você está falando com: ${userName}`,
     "Use o primeiro nome do usuário no greeting, sem exagerar.",
@@ -342,8 +389,14 @@ module.exports = async function handler(request, response) {
     `Top resultados: ${JSON.stringify(rowInsights.byResults)}`,
     compactSelectedCampaign ? `Campanha selecionada para análise isolada: ${JSON.stringify(compactSelectedCampaign)}` : "Campanha selecionada para análise isolada: nenhuma.",
     question ? `Pergunta do usuário: ${question}` : "Pergunta do usuário: nenhuma. Gere análise proativa.",
-    "Cruze métricas agregadas com os dados detalhados antes de recomendar mudanças.",
-    compactSelectedCampaign ? "Dê prioridade analítica à campanha selecionada e cite o nome dela explicitamente na resposta." : "Se não houver campanha isolada, analise o conjunto geral.",
+    generalMode
+      ? "Não invente métricas nem campanha. Responda a pergunta do usuário de forma geral e útil. Se fizer sentido, ofereça um próximo passo claro."
+      : "Cruze métricas agregadas com os dados detalhados antes de recomendar mudanças.",
+    generalMode
+      ? "Se a pergunta for sobre tema amplo, responda diretamente. Só conecte com campanhas quando isso realmente ajudar."
+      : compactSelectedCampaign
+        ? "Dê prioridade analítica à campanha selecionada e cite o nome dela explicitamente na resposta."
+        : "Se não houver campanha isolada, analise o conjunto geral.",
     "Se houver sinais de risco, deixe isso explícito.",
     "Retorne JSON puro com as chaves: greeting, summary, diagnosis (array com até 3 itens), alerts (array com até 3 itens), recommendations (array de 3 a 5 itens), nextAction."
   ].join("\n");

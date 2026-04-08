@@ -1381,7 +1381,7 @@
 				<button id="openMetricsScreenBtn" class="btn btn-soft btn-sm" type="button">Tela de metricas</button>
 				<button id="clientViewBtn" class="btn btn-soft btn-sm" type="button">Visão cliente</button>
 				<button id="exportPdfBtn" class="btn btn-soft btn-sm" type="button">Exportar PDF</button>
-				<button id="loadAdviceBtn" class="btn btn-soft btn-sm" type="button">Dicas IA</button>
+				<button id="loadAdviceBtn" class="btn btn-soft btn-sm" type="button">Abrir IA</button>
 			</div>
 			<div id="status" class="status">Pronto para consultar.</div>
 			<div id="mainNextStep" class="next-step">Proximo passo: autentique-se para liberar o painel.</div>
@@ -1477,8 +1477,8 @@
 
 
 			<div class="field">
-				<label>Assistente de métricas (janela flutuante)</label>
-				<div class="next-step" style="margin-bottom:8px;">Abra o chat da IA no canto para analisar sem perder a visão das métricas.</div>
+				<label>Assistente geral com análise de campanhas</label>
+				<div class="next-step" style="margin-bottom:8px;">Abra o chat da IA no canto para analisar métricas ou fazer perguntas gerais sem perder a visão do painel.</div>
 				<div class="actions" style="margin-bottom:8px;">
 					<button id="openAiChatWindowBtn" class="btn btn-soft btn-sm" type="button">Abrir chat IA</button>
 				</div>
@@ -1486,7 +1486,7 @@
 					<div id="adviceBox">
 					<div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
 						<div style="min-width:220px;">
-							<label for="aiProviderSelect">IA da análise</label>
+							<label for="aiProviderSelect">IA do assistente</label>
 							<select id="aiProviderSelect">
 								<option value="">Carregando opções...</option>
 							</select>
@@ -1512,7 +1512,7 @@
 					</div>
 					<div style="margin-top:10px;">
 						<label for="adviceQuestion">Pergunte algo para a IA:</label>
-						<input id="adviceQuestion" type="text" placeholder="Ex: Como melhorar o CTR?" style="width:70%;margin-right:8px;" />
+						<input id="adviceQuestion" type="text" placeholder="Ex: Como melhorar o CTR? ou Me explique ROAS" style="width:70%;margin-right:8px;" />
 						<button id="adviceAskBtn" class="btn btn-primary" type="button">Perguntar</button>
 					</div>
 					</div>
