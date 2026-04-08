@@ -210,6 +210,17 @@ const campaignDetailMetaEl = document.getElementById("campaignDetailMeta");
 const campaignDetailChartEl = document.getElementById("campaignDetailChart");
 const campaignDetailSummaryEl = document.getElementById("campaignDetailSummary");
 const analyzeCampaignBtnEl = document.getElementById("analyzeCampaignBtn");
+const adviceQuestionInputEl = document.getElementById("adviceQuestion");
+const openAiChatWindowBtnEl = document.getElementById("openAiChatWindowBtn");
+const adviceBoxHostEl = document.getElementById("adviceBoxHost");
+const adviceBoxEl = document.getElementById("adviceBox");
+const aiChatWindowEl = document.getElementById("aiChatWindow");
+const aiChatWindowBodyEl = document.getElementById("aiChatWindowBody");
+const aiChatWindowHeaderEl = document.getElementById("aiChatWindowHeader");
+const aiChatResizeHandleEl = document.getElementById("aiChatResizeHandle");
+const aiChatLauncherEl = document.getElementById("aiChatLauncher");
+const aiChatMinBtnEl = document.getElementById("aiChatMinBtn");
+const aiChatCloseBtnEl = document.getElementById("aiChatCloseBtn");
 
 const kSpendEl = document.getElementById("kSpend");
 const kClicksEl = document.getElementById("kClicks");
@@ -237,6 +248,200 @@ const cvStagesEl = document.getElementById("cvStages");
 const cvTopAdsEl = document.getElementById("cvTopAds");
 const panelConfigEl = document.getElementById("panelConfig");
 const metricsScreenEl = document.getElementById("metricsScreen");
+
+let aiChatInitialized = false;
+let aiChatDragging = null;
+let aiChatResizing = null;
+
+function getAiChatPrefsKey() {
+  const id = String(currentUser?.id || currentUser?.email || "anon");
+  return `panelAiChatPrefs:${id}`;
+}
+
+function loadAiChatPrefs() {
+  try {
+    const raw = localStorage.getItem(getAiChatPrefsKey());
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function saveAiChatPrefs() {
+  if (!aiChatWindowEl) return;
+  try {
+    const rect = aiChatWindowEl.getBoundingClientRect();
+    localStorage.setItem(getAiChatPrefsKey(), JSON.stringify({
+      left: Math.round(rect.left),
+      top: Math.round(rect.top),
+      width: Math.round(rect.width),
+      height: Math.round(rect.height),
+      minimized: aiChatWindowEl.classList.contains("minimized")
+    }));
+  } catch (_) {
+    // Ignora falha de storage.
+  }
+}
+
+function applyAiChatPosition(left, top, width, height) {
+  if (!aiChatWindowEl) return;
+  aiChatWindowEl.style.right = "auto";
+  aiChatWindowEl.style.bottom = "auto";
+  if (Number.isFinite(width)) aiChatWindowEl.style.width = `${Math.max(360, width)}px`;
+  if (Number.isFinite(height)) aiChatWindowEl.style.height = `${Math.max(320, height)}px`;
+  if (Number.isFinite(left)) aiChatWindowEl.style.left = `${Math.max(8, left)}px`;
+  if (Number.isFinite(top)) aiChatWindowEl.style.top = `${Math.max(8, top)}px`;
+}
+
+function setDefaultAiChatPosition() {
+  if (!aiChatWindowEl) return;
+  const width = 480;
+  const height = 540;
+  const left = Math.max(8, window.innerWidth - width - 20);
+  const top = Math.max(8, window.innerHeight - height - 20);
+  applyAiChatPosition(left, top, width, height);
+}
+
+function initAiChatWindow() {
+  if (aiChatInitialized || !aiChatWindowEl || !aiChatWindowBodyEl || !adviceBoxEl) return;
+  aiChatWindowBodyEl.appendChild(adviceBoxEl);
+  if (adviceBoxHostEl) adviceBoxHostEl.classList.add("hidden");
+
+  const prefs = loadAiChatPrefs();
+  if (prefs && Number.isFinite(prefs.left) && Number.isFinite(prefs.top)) {
+    applyAiChatPosition(prefs.left, prefs.top, prefs.width, prefs.height);
+    aiChatWindowEl.classList.toggle("minimized", Boolean(prefs.minimized));
+  } else {
+    setDefaultAiChatPosition();
+  }
+
+  aiChatInitialized = true;
+}
+
+function openAiChatWindow(options = {}) {
+  if (!aiChatWindowEl) return;
+  initAiChatWindow();
+  aiChatWindowEl.classList.remove("hidden");
+  if (aiChatLauncherEl) aiChatLauncherEl.classList.add("hidden");
+  if (options.focusQuestion && adviceQuestionInputEl) {
+    adviceQuestionInputEl.focus();
+  }
+}
+
+function closeAiChatWindow() {
+  if (!aiChatWindowEl) return;
+  aiChatWindowEl.classList.add("hidden");
+  if (aiChatLauncherEl) aiChatLauncherEl.classList.remove("hidden");
+  saveAiChatPrefs();
+}
+
+function toggleAiChatMinimize() {
+  if (!aiChatWindowEl) return;
+  aiChatWindowEl.classList.toggle("minimized");
+  saveAiChatPrefs();
+}
+
+function clampAiChatToViewport() {
+  if (!aiChatWindowEl) return;
+  const rect = aiChatWindowEl.getBoundingClientRect();
+  const width = Math.min(rect.width, window.innerWidth - 16);
+  const height = Math.min(rect.height, window.innerHeight - 16);
+  const left = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - width - 8));
+  const top = Math.min(Math.max(8, rect.top), Math.max(8, window.innerHeight - height - 8));
+  applyAiChatPosition(left, top, width, height);
+}
+
+function bindAiChatInteractions() {
+  if (!aiChatWindowEl || !aiChatWindowHeaderEl) return;
+
+  if (aiChatLauncherEl) {
+    aiChatLauncherEl.classList.remove("hidden");
+    aiChatLauncherEl.addEventListener("click", () => openAiChatWindow({ focusQuestion: true }));
+  }
+
+  if (openAiChatWindowBtnEl) {
+    openAiChatWindowBtnEl.addEventListener("click", () => openAiChatWindow({ focusQuestion: true }));
+  }
+
+  if (aiChatCloseBtnEl) aiChatCloseBtnEl.addEventListener("click", closeAiChatWindow);
+  if (aiChatMinBtnEl) aiChatMinBtnEl.addEventListener("click", toggleAiChatMinimize);
+
+  window.addEventListener("resize", () => {
+    if (!window.matchMedia("(max-width: 900px)").matches) {
+      clampAiChatToViewport();
+      saveAiChatPrefs();
+    }
+  });
+
+  aiChatWindowHeaderEl.addEventListener("pointerdown", (event) => {
+    if (window.matchMedia("(max-width: 900px)").matches) return;
+    if (event.target.closest("button")) return;
+    const rect = aiChatWindowEl.getBoundingClientRect();
+    aiChatDragging = {
+      offsetX: event.clientX - rect.left,
+      offsetY: event.clientY - rect.top
+    };
+    aiChatWindowHeaderEl.setPointerCapture(event.pointerId);
+  });
+
+  aiChatWindowHeaderEl.addEventListener("pointermove", (event) => {
+    if (!aiChatDragging) return;
+    const rect = aiChatWindowEl.getBoundingClientRect();
+    const left = Math.min(
+      Math.max(8, event.clientX - aiChatDragging.offsetX),
+      Math.max(8, window.innerWidth - rect.width - 8)
+    );
+    const top = Math.min(
+      Math.max(8, event.clientY - aiChatDragging.offsetY),
+      Math.max(8, window.innerHeight - rect.height - 8)
+    );
+    applyAiChatPosition(left, top, rect.width, rect.height);
+  });
+
+  aiChatWindowHeaderEl.addEventListener("pointerup", (event) => {
+    if (!aiChatDragging) return;
+    aiChatDragging = null;
+    aiChatWindowHeaderEl.releasePointerCapture(event.pointerId);
+    saveAiChatPrefs();
+  });
+
+  if (aiChatResizeHandleEl) {
+    aiChatResizeHandleEl.addEventListener("pointerdown", (event) => {
+      if (window.matchMedia("(max-width: 900px)").matches) return;
+      const rect = aiChatWindowEl.getBoundingClientRect();
+      aiChatResizing = {
+        startX: event.clientX,
+        startY: event.clientY,
+        startWidth: rect.width,
+        startHeight: rect.height,
+        left: rect.left,
+        top: rect.top
+      };
+      aiChatResizeHandleEl.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    });
+
+    aiChatResizeHandleEl.addEventListener("pointermove", (event) => {
+      if (!aiChatResizing) return;
+      const width = Math.min(
+        Math.max(360, aiChatResizing.startWidth + (event.clientX - aiChatResizing.startX)),
+        window.innerWidth - aiChatResizing.left - 8
+      );
+      const height = Math.min(
+        Math.max(320, aiChatResizing.startHeight + (event.clientY - aiChatResizing.startY)),
+        window.innerHeight - aiChatResizing.top - 8
+      );
+      applyAiChatPosition(aiChatResizing.left, aiChatResizing.top, width, height);
+    });
+
+    aiChatResizeHandleEl.addEventListener("pointerup", (event) => {
+      if (!aiChatResizing) return;
+      aiChatResizing = null;
+      aiChatResizeHandleEl.releasePointerCapture(event.pointerId);
+      saveAiChatPrefs();
+    });
+  }
+}
 
 function brMoney(value) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value || 0));
@@ -2096,6 +2301,7 @@ async function loadAdvice(extra = {}) {
     return;
   }
 
+  openAiChatWindow();
   adviceEl.textContent = "Gerando recomendacoes...";
   const payload = {
     ...lastMetricsPayload,
@@ -2236,6 +2442,8 @@ function exportExecutivePdf() {
 }
 
 function bindEvents() {
+  initAiChatWindow();
+  bindAiChatInteractions();
       // Relatórios: intervalo de datas simples + atalhos
       const dateStartEl = document.getElementById("dateStart");
       const dateEndEl = document.getElementById("dateEnd");
@@ -2273,11 +2481,13 @@ function bindEvents() {
     const adviceNotUsefulBtn = document.getElementById("adviceNotUsefulBtn");
     const adviceRefreshBtn = document.getElementById("adviceRefreshBtn");
     const adviceAskBtn = document.getElementById("adviceAskBtn");
-    const adviceQuestion = document.getElementById("adviceQuestion");
 
     if (adviceUsefulBtn) adviceUsefulBtn.onclick = () => setStatus("ok", "Obrigado pelo feedback! IA marcada como útil.");
     if (adviceNotUsefulBtn) adviceNotUsefulBtn.onclick = () => setStatus("warn", "Feedback registrado: dica não foi útil.");
-    if (adviceRefreshBtn) adviceRefreshBtn.onclick = () => loadAdvice({ refresh: true });
+    if (adviceRefreshBtn) adviceRefreshBtn.onclick = () => {
+      openAiChatWindow();
+      loadAdvice({ refresh: true });
+    };
     if (aiProviderSelectEl) {
       aiProviderSelectEl.addEventListener("change", () => {
         const provider = getResolvedAiProvider();
@@ -2288,11 +2498,12 @@ function bindEvents() {
     }
     if (saveAiProviderKeyBtnEl) saveAiProviderKeyBtnEl.addEventListener("click", saveUserAiKey);
     if (deleteAiProviderKeyBtnEl) deleteAiProviderKeyBtnEl.addEventListener("click", deleteUserAiKey);
-    if (adviceAskBtn && adviceQuestion) adviceAskBtn.onclick = () => {
-      const question = adviceQuestion.value.trim();
+    if (adviceAskBtn && adviceQuestionInputEl) adviceAskBtn.onclick = () => {
+      const question = adviceQuestionInputEl.value.trim();
       if (!question) return;
+      openAiChatWindow();
       loadAdvice({ question });
-      adviceQuestion.value = "";
+      adviceQuestionInputEl.value = "";
     };
     if (campaignDetailSelectEl) {
       campaignDetailSelectEl.addEventListener("change", () => {
@@ -2448,7 +2659,10 @@ function bindEvents() {
   if (loadMetricsPanelBtnEl) loadMetricsPanelBtnEl.addEventListener("click", loadMetrics);
   document.getElementById("clientViewBtn").addEventListener("click", openClientView);
   document.getElementById("exportPdfBtn").addEventListener("click", exportExecutivePdf);
-  document.getElementById("loadAdviceBtn").addEventListener("click", loadAdvice);
+  document.getElementById("loadAdviceBtn").addEventListener("click", () => {
+    openAiChatWindow();
+    loadAdvice();
+  });
   document.getElementById("cvBackBtn").addEventListener("click", closeClientView);
   document.getElementById("cvPrintBtn").addEventListener("click", exportExecutivePdf);
   signupPasswordEl.addEventListener("input", () => updatePolicy(signupPasswordEl, signupPolicyEl, signupRulesEl, signupStrengthMeterEl));

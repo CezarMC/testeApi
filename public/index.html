@@ -958,6 +958,123 @@
 			.right { max-height: none; overflow: visible; }
 		}
 
+		.ai-chat-window {
+			position: fixed;
+			right: 20px;
+			bottom: 20px;
+			width: 480px;
+			height: 540px;
+			z-index: 1200;
+			background: rgba(255, 255, 255, 0.98);
+			border: 1px solid rgba(12, 45, 72, 0.2);
+			border-radius: 14px;
+			box-shadow: 0 16px 46px rgba(5, 22, 37, 0.34);
+			overflow: hidden;
+			display: grid;
+			grid-template-rows: auto 1fr;
+		}
+
+		.ai-chat-window.minimized {
+			height: auto;
+		}
+
+		.ai-chat-window.minimized .ai-chat-window-body,
+		.ai-chat-window.minimized .ai-chat-window-resize {
+			display: none;
+		}
+
+		.ai-chat-window-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			gap: 10px;
+			padding: 10px 12px;
+			background: linear-gradient(120deg, #0f3f66, #0c5d95 52%, #1f8ec3);
+			color: #f3fbff;
+			cursor: move;
+			user-select: none;
+		}
+
+		.ai-chat-window-title {
+			font-size: 0.85rem;
+			font-weight: 700;
+			letter-spacing: 0.04em;
+			text-transform: uppercase;
+		}
+
+		.ai-chat-window-controls {
+			display: flex;
+			gap: 6px;
+		}
+
+		.ai-chat-window-controls button {
+			min-height: 30px;
+			padding: 6px 10px;
+			border-radius: 8px;
+			border: 1px solid rgba(255, 255, 255, 0.34);
+			background: rgba(255, 255, 255, 0.12);
+			color: #f3fbff;
+			font-weight: 700;
+			cursor: pointer;
+		}
+
+		.ai-chat-window-body {
+			overflow: auto;
+			padding: 12px;
+		}
+
+		.ai-chat-window-resize {
+			position: absolute;
+			right: 0;
+			bottom: 0;
+			width: 16px;
+			height: 16px;
+			cursor: nwse-resize;
+			background: linear-gradient(135deg, transparent 44%, rgba(20, 85, 133, 0.45) 45%, rgba(20, 85, 133, 0.45) 55%, transparent 56%);
+			border-bottom-right-radius: 12px;
+		}
+
+		.ai-chat-launcher {
+			position: fixed;
+			right: 20px;
+			bottom: 20px;
+			z-index: 1180;
+			border: 0;
+			border-radius: 999px;
+			padding: 12px 16px;
+			font-size: 0.85rem;
+			font-weight: 700;
+			letter-spacing: 0.03em;
+			background: linear-gradient(120deg, #0f3f66, #0c5d95 52%, #1f8ec3);
+			color: #f3fbff;
+			box-shadow: 0 12px 30px rgba(7, 35, 58, 0.35);
+			cursor: pointer;
+		}
+
+		@media (max-width: 900px) {
+			.ai-chat-window {
+				left: 8px !important;
+				right: 8px !important;
+				top: 8px !important;
+				bottom: 8px !important;
+				width: auto !important;
+				height: auto !important;
+			}
+
+			.ai-chat-window-header {
+				cursor: default;
+			}
+
+			.ai-chat-window-resize {
+				display: none;
+			}
+
+			.ai-chat-launcher {
+				right: 10px;
+				bottom: 10px;
+			}
+		}
+
 		@media (max-width: 760px) {
 			body { padding: 12px; }
 			.entry, .recover, .reset { padding: 16px; }
@@ -1360,8 +1477,13 @@
 
 
 			<div class="field">
-				<label>Assistente de métricas (Claude)</label>
-				<div id="adviceBox">
+				<label>Assistente de métricas (janela flutuante)</label>
+				<div class="next-step" style="margin-bottom:8px;">Abra o chat da IA no canto para analisar sem perder a visão das métricas.</div>
+				<div class="actions" style="margin-bottom:8px;">
+					<button id="openAiChatWindowBtn" class="btn btn-soft btn-sm" type="button">Abrir chat IA</button>
+				</div>
+				<div id="adviceBoxHost" style="display:none;">
+					<div id="adviceBox">
 					<div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
 						<div style="min-width:220px;">
 							<label for="aiProviderSelect">IA da análise</label>
@@ -1392,6 +1514,7 @@
 						<label for="adviceQuestion">Pergunte algo para a IA:</label>
 						<input id="adviceQuestion" type="text" placeholder="Ex: Como melhorar o CTR?" style="width:70%;margin-right:8px;" />
 						<button id="adviceAskBtn" class="btn btn-primary" type="button">Perguntar</button>
+					</div>
 					</div>
 				</div>
 			</div>
@@ -1441,6 +1564,19 @@
 				<ol id="cvTopAds" style="margin:0; padding:10px 14px 10px 28px;"></ol>
 			</div>
 		</div>
+	</section>
+
+	<button id="aiChatLauncher" class="ai-chat-launcher hidden" type="button">Abrir IA</button>
+	<section id="aiChatWindow" class="ai-chat-window hidden" aria-label="Janela flutuante da IA">
+		<div id="aiChatWindowHeader" class="ai-chat-window-header">
+			<div class="ai-chat-window-title">Chat da IA</div>
+			<div class="ai-chat-window-controls">
+				<button id="aiChatMinBtn" type="button" title="Minimizar">_</button>
+				<button id="aiChatCloseBtn" type="button" title="Fechar">X</button>
+			</div>
+		</div>
+		<div id="aiChatWindowBody" class="ai-chat-window-body"></div>
+		<div id="aiChatResizeHandle" class="ai-chat-window-resize" aria-hidden="true"></div>
 	</section>
 
 	<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
