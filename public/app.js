@@ -209,6 +209,10 @@ const campaignDetailSelectEl = document.getElementById("campaignDetailSelect");
 const campaignDetailMetaEl = document.getElementById("campaignDetailMeta");
 const campaignDetailChartEl = document.getElementById("campaignDetailChart");
 const campaignDetailSummaryEl = document.getElementById("campaignDetailSummary");
+const metricsVolumeChartEl = document.getElementById("metricsVolumeChart");
+const metricsEfficiencyChartEl = document.getElementById("metricsEfficiencyChart");
+const metricsTrendChartEl = document.getElementById("metricsTrendChart");
+const metricsTrendHintEl = document.getElementById("metricsTrendHint");
 const analyzeCampaignBtnEl = document.getElementById("analyzeCampaignBtn");
 const adviceQuestionInputEl = document.getElementById("adviceQuestion");
 const openAiChatWindowBtnEl = document.getElementById("openAiChatWindowBtn");
@@ -475,6 +479,95 @@ function normalizeResultType(type) {
 
 function toPercent(value) {
   return `${Number(value || 0).toFixed(2).replace(".", ",")}%`;
+}
+
+function chartRowHtml(label, valueLabel, percent, tone = "a") {
+  return `
+    <div class="chart-row">
+      <div class="chart-row-head"><span>${escapeHtml(label)}</span><span>${escapeHtml(valueLabel)}</span></div>
+      <div class="chart-track"><div class="chart-fill ${tone}" style="width:${Math.max(3, Math.min(100, Number(percent || 0)))}%"></div></div>
+    </div>
+  `;
+}
+
+function renderMetricsCharts(summary = {}) {
+  if (!metricsVolumeChartEl || !metricsEfficiencyChartEl || !metricsTrendChartEl || !metricsTrendHintEl) return;
+
+  const spend = Number(summary.spend || 0);
+  const clicks = Number(summary.clicks || 0);
+  const leads = Number(summary.leads || 0);
+  const impressions = Number(summary.impressions || 0);
+
+  const volumeItems = [
+    { label: "Gasto", value: spend, text: brMoney(spend), tone: "a" },
+    { label: "Impressões", value: impressions, text: brInt(impressions), tone: "d" },
+    { label: "Cliques", value: clicks, text: brInt(clicks), tone: "b" },
+    { label: "Leads", value: leads, text: brInt(leads), tone: "c" }
+  ];
+  const maxVolume = Math.max(...volumeItems.map((item) => Number(item.value || 0)), 0.0001);
+  metricsVolumeChartEl.innerHTML = volumeItems
+    .map((item) => chartRowHtml(item.label, item.text, (Number(item.value || 0) / maxVolume) * 100, item.tone))
+    .join("");
+
+  const ctr = Number(summary.ctr || 0);
+  const linkCtr = Number(summary.advanced?.link_ctr || 0);
+  const cpc = Number(summary.cpc || 0);
+  const cpl = Number(summary.cpl || 0);
+  const cpm = Number(summary.cpm || 0);
+
+  const ctrTarget = 2;
+  const cpcTarget = 3;
+  const cplTarget = 25;
+  const cpmTarget = 35;
+
+  const efficiencyRows = [
+    chartRowHtml("CTR", toPercent(ctr), Math.min(100, (ctr / ctrTarget) * 100), "a"),
+    chartRowHtml("CTR link", toPercent(linkCtr), Math.min(100, (linkCtr / ctrTarget) * 100), "b"),
+    chartRowHtml("CPC", brMoney(cpc), Math.max(5, 100 - Math.min(100, (cpc / cpcTarget) * 100)), "c"),
+    chartRowHtml("CPL", brMoney(cpl), Math.max(5, 100 - Math.min(100, (cpl / cplTarget) * 100)), "d"),
+    chartRowHtml("CPM", brMoney(cpm), Math.max(5, 100 - Math.min(100, (cpm / cpmTarget) * 100)), "a")
+  ];
+  metricsEfficiencyChartEl.innerHTML = efficiencyRows.join("");
+
+  const history = [...metricsHistory].slice(0, 8).reverse();
+  if (history.length < 2) {
+    metricsTrendChartEl.innerHTML = "<div class='chart-hint'>Ainda não há histórico suficiente para desenhar tendência.</div>";
+    metricsTrendHintEl.textContent = "Atualize as métricas algumas vezes para enxergar tendência de gasto e leads.";
+    return;
+  }
+
+  const spendValues = history.map((item) => Number(item.metrics?.spend || 0));
+  const leadValues = history.map((item) => Number(item.metrics?.leads || 0));
+  const maxSpend = Math.max(...spendValues, 1);
+  const maxLeads = Math.max(...leadValues, 1);
+  const chartWidth = 330;
+  const chartHeight = 130;
+  const padX = 12;
+  const padY = 12;
+  const usableW = chartWidth - padX * 2;
+  const usableH = chartHeight - padY * 2;
+  const stepX = history.length > 1 ? usableW / (history.length - 1) : usableW;
+
+  const spendPoints = spendValues.map((value, index) => {
+    const x = padX + stepX * index;
+    const y = chartHeight - padY - (value / maxSpend) * usableH;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+
+  const leadsPoints = leadValues.map((value, index) => {
+    const x = padX + stepX * index;
+    const y = chartHeight - padY - (value / maxLeads) * usableH;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+
+  metricsTrendChartEl.innerHTML = `
+    <svg viewBox="0 0 ${chartWidth} ${chartHeight}" width="100%" height="140" role="img" aria-label="Evolução de gasto e leads">
+      <line x1="${padX}" y1="${chartHeight - padY}" x2="${chartWidth - padX}" y2="${chartHeight - padY}" stroke="#d8e4ef" stroke-width="1" />
+      <polyline fill="none" stroke="#0f6ea8" stroke-width="2.4" points="${spendPoints}" />
+      <polyline fill="none" stroke="#d98c10" stroke-width="2.4" points="${leadsPoints}" />
+    </svg>
+  `;
+  metricsTrendHintEl.textContent = `Últimas ${history.length} atualizações: linha azul = gasto, linha laranja = leads.`;
 }
 
 function normalizeObjective(obj) {
@@ -2150,6 +2243,7 @@ function clearMetrics() {
   adviceEl.textContent = "As dicas aparecerao aqui.";
   rawOutputEl.textContent = "Sem requisicao executada.";
   lastMetricsPayload = null;
+  renderMetricsCharts({});
 }
 
 function updateCards(summary) {
@@ -2275,10 +2369,12 @@ async function loadMetrics() {
   } else {
     rawOutputEl.textContent = "Sem conversões retornadas pela Meta API neste período.";
   }
+  const periodDays = calcPeriodDays(dateStart, dateEnd);
   lastMetricsPayload = {
     clientName: selected.dataset.name || "Cliente",
     reportType: reportTypeEl.value,
     agencyMetricFocus: "lead",
+    periodDays,
     dateStart,
     dateEnd,
     metrics: result.data.summary || {},
@@ -2286,6 +2382,7 @@ async function loadMetrics() {
     selectedCampaign: getSelectedCampaignDetail()
   };
   updateMetricsHistory(lastMetricsPayload);
+  renderMetricsCharts(result.data.summary || {});
   openMetricsScreen();
   setStatus("ok", "Metricas atualizadas.");
   setMainNextStep("clique em Gerar dicas da IA.");

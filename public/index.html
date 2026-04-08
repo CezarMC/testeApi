@@ -815,6 +815,75 @@
 		.client-card .k { font-size: 0.74rem; text-transform: uppercase; color: var(--muted); font-weight: 700; }
 		.client-card .v { font-size: 1.1rem; font-weight: 700; margin-top: 6px; }
 
+		.chart-grid {
+			display: grid;
+			gap: 10px;
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+		}
+
+		.chart-card {
+			border: 1px solid #d9e5ef;
+			border-radius: 12px;
+			padding: 10px;
+			background: #fff;
+			display: grid;
+			gap: 8px;
+		}
+
+		.chart-title {
+			font-size: 0.78rem;
+			font-weight: 700;
+			letter-spacing: 0.04em;
+			text-transform: uppercase;
+			color: #335572;
+		}
+
+		.chart-bars {
+			display: grid;
+			gap: 7px;
+		}
+
+		.chart-row {
+			display: grid;
+			gap: 4px;
+		}
+
+		.chart-row-head {
+			display: flex;
+			justify-content: space-between;
+			font-size: 0.8rem;
+			color: #35516d;
+		}
+
+		.chart-track {
+			height: 10px;
+			border-radius: 999px;
+			background: #e8eef5;
+			overflow: hidden;
+		}
+
+		.chart-fill {
+			height: 100%;
+			border-radius: 999px;
+		}
+
+		.chart-fill.a { background: #0f6ea8; }
+		.chart-fill.b { background: #3f8f3f; }
+		.chart-fill.c { background: #d98c10; }
+		.chart-fill.d { background: #9154d9; }
+
+		.chart-svg-wrap {
+			border: 1px solid #e4ecf4;
+			border-radius: 10px;
+			padding: 6px;
+			background: #f8fbff;
+		}
+
+		.chart-hint {
+			font-size: 0.78rem;
+			color: #4f6478;
+		}
+
 		@keyframes authCardIn {
 			from { opacity: 0; transform: translateY(10px) scale(0.995); }
 			to { opacity: 1; transform: translateY(0) scale(1); }
@@ -954,6 +1023,7 @@
 		@media (max-width: 1000px) {
 			.app { grid-template-columns: 1fr; }
 			.row, .row-3, .cards { grid-template-columns: 1fr; }
+			.chart-grid { grid-template-columns: 1fr; }
 			.client-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 			.right { max-height: none; overflow: visible; }
 		}
@@ -1407,6 +1477,25 @@
 			<div class="field">
 				<label>Objetivo estratégico das campanhas</label>
 				<div id="objectiveSummary" style="border:1px solid #d9e5ef; border-radius:12px; padding:10px 12px; background:#f8fbff; font-size:0.93rem;">Carregue as métricas para gerar o resumo estratégico.</div>
+			</div>
+
+			<div class="field">
+				<label>Gráficos de métricas</label>
+				<div class="chart-grid">
+					<div class="chart-card">
+						<div class="chart-title">Volume atual</div>
+						<div id="metricsVolumeChart" class="chart-bars"></div>
+					</div>
+					<div class="chart-card">
+						<div class="chart-title">Eficiência atual</div>
+						<div id="metricsEfficiencyChart" class="chart-bars"></div>
+					</div>
+					<div class="chart-card">
+						<div class="chart-title">Evolução recente</div>
+						<div id="metricsTrendChart" class="chart-svg-wrap"></div>
+						<div id="metricsTrendHint" class="chart-hint">Atualize as métricas para montar a linha de evolução.</div>
+					</div>
+				</div>
 			</div>
 
 			<div class="field">
