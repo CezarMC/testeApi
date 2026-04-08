@@ -884,6 +884,59 @@
 			color: #4f6478;
 		}
 
+		.month-compare-box {
+			margin-top: 10px;
+			border: 1px solid #d9e5ef;
+			border-radius: 12px;
+			padding: 10px;
+			background: #f8fbff;
+			display: grid;
+			gap: 10px;
+		}
+
+		.month-compare-head {
+			display: flex;
+			gap: 10px;
+			align-items: end;
+			flex-wrap: wrap;
+		}
+
+		.month-compare-grid {
+			display: grid;
+			gap: 8px;
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+
+		.month-kpi {
+			border: 1px solid #dce8f3;
+			border-radius: 10px;
+			padding: 8px;
+			background: #fff;
+		}
+
+		.month-kpi .k {
+			font-size: 0.72rem;
+			font-weight: 700;
+			text-transform: uppercase;
+			color: #486581;
+		}
+
+		.month-kpi .v {
+			font-size: 1rem;
+			font-weight: 700;
+			color: #0f2940;
+			margin-top: 2px;
+		}
+
+		.month-kpi .d {
+			font-size: 0.8rem;
+			margin-top: 2px;
+		}
+
+		.month-kpi .d.up { color: #1f8f5f; }
+		.month-kpi .d.down { color: #b33030; }
+		.month-kpi .d.flat { color: #4f6478; }
+
 		@keyframes authCardIn {
 			from { opacity: 0; transform: translateY(10px) scale(0.995); }
 			to { opacity: 1; transform: translateY(0) scale(1); }
@@ -1024,6 +1077,7 @@
 			.app { grid-template-columns: 1fr; }
 			.row, .row-3, .cards { grid-template-columns: 1fr; }
 			.chart-grid { grid-template-columns: 1fr; }
+			.month-compare-grid { grid-template-columns: 1fr; }
 			.client-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 			.right { max-height: none; overflow: visible; }
 		}
@@ -1495,6 +1549,21 @@
 						<div id="metricsTrendChart" class="chart-svg-wrap"></div>
 						<div id="metricsTrendHint" class="chart-hint">Atualize as métricas para montar a linha de evolução.</div>
 					</div>
+				</div>
+				<div class="month-compare-box">
+					<div class="month-compare-head">
+						<div style="min-width:180px;">
+							<label for="compareMonthCurrent">Mês principal</label>
+							<input id="compareMonthCurrent" type="month" />
+						</div>
+						<div style="min-width:180px;">
+							<label for="compareMonthPrevious">Comparar com</label>
+							<input id="compareMonthPrevious" type="month" />
+						</div>
+						<button id="compareMonthsBtn" class="btn btn-soft btn-sm" type="button">Comparar meses</button>
+					</div>
+					<div id="monthCompareStatus" class="status">Selecione dois meses e clique em Comparar meses.</div>
+					<div id="monthCompareChart" class="month-compare-grid"></div>
 				</div>
 			</div>
 

@@ -213,6 +213,11 @@ const metricsVolumeChartEl = document.getElementById("metricsVolumeChart");
 const metricsEfficiencyChartEl = document.getElementById("metricsEfficiencyChart");
 const metricsTrendChartEl = document.getElementById("metricsTrendChart");
 const metricsTrendHintEl = document.getElementById("metricsTrendHint");
+const compareMonthCurrentEl = document.getElementById("compareMonthCurrent");
+const compareMonthPreviousEl = document.getElementById("compareMonthPrevious");
+const compareMonthsBtnEl = document.getElementById("compareMonthsBtn");
+const monthCompareStatusEl = document.getElementById("monthCompareStatus");
+const monthCompareChartEl = document.getElementById("monthCompareChart");
 const analyzeCampaignBtnEl = document.getElementById("analyzeCampaignBtn");
 const adviceQuestionInputEl = document.getElementById("adviceQuestion");
 const openAiChatWindowBtnEl = document.getElementById("openAiChatWindowBtn");
@@ -488,6 +493,139 @@ function chartRowHtml(label, valueLabel, percent, tone = "a") {
       <div class="chart-track"><div class="chart-fill ${tone}" style="width:${Math.max(3, Math.min(100, Number(percent || 0)))}%"></div></div>
     </div>
   `;
+}
+
+function monthRangeFromInput(monthValue) {
+  const raw = String(monthValue || "").trim();
+  if (!/^\d{4}-\d{2}$/.test(raw)) return null;
+  const [yearStr, monthStr] = raw.split("-");
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) return null;
+  const start = new Date(year, month - 1, 1);
+  const end = new Date(year, month, 0);
+  const toIso = (date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+  return {
+    label: start.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }),
+    start: toIso(start),
+    end: toIso(end)
+  };
+}
+
+function deltaPct(current, previous) {
+  const curr = Number(current || 0);
+  const prev = Number(previous || 0);
+  if (prev === 0) {
+    if (curr === 0) return 0;
+    return 100;
+  }
+  return ((curr - prev) / Math.abs(prev)) * 100;
+}
+
+function formatDelta(delta, inverseGood = false) {
+  const rounded = Number(delta || 0);
+  const absLabel = `${Math.abs(rounded).toFixed(1).replace(".", ",")}%`;
+  if (Math.abs(rounded) < 0.05) {
+    return { label: "estável", tone: "flat" };
+  }
+  const isUp = rounded > 0;
+  const good = inverseGood ? !isUp : isUp;
+  const signal = isUp ? "▲" : "▼";
+  return {
+    label: `${signal} ${absLabel}`,
+    tone: good ? "up" : "down"
+  };
+}
+
+function renderMonthCompareCard(label, currentValue, previousValue, formatter, inverseGood = false) {
+  const delta = deltaPct(currentValue, previousValue);
+  const deltaView = formatDelta(delta, inverseGood);
+  return `
+    <div class="month-kpi">
+      <div class="k">${escapeHtml(label)}</div>
+      <div class="v">${escapeHtml(formatter(currentValue))}</div>
+      <div class="d ${deltaView.tone}">${escapeHtml(deltaView.label)} vs mês base (${escapeHtml(formatter(previousValue))})</div>
+    </div>
+  `;
+}
+
+function setMonthCompareStatus(kind, message) {
+  if (!monthCompareStatusEl) return;
+  monthCompareStatusEl.className = "status";
+  if (kind) monthCompareStatusEl.classList.add(kind);
+  monthCompareStatusEl.textContent = message;
+}
+
+async function fetchMetricsSummaryForRange(selectedClientOption, dateStart, dateEnd) {
+  const payload = {
+    apiVersion: apiVersionEl.value.trim() || selectedClientOption.dataset.apiVersion || "v25.0",
+    adAccountId: adAccountIdEl.value.trim() || selectedClientOption.dataset.account || "",
+    dateStart,
+    dateEnd,
+    reportType: reportTypeEl.value,
+    agencyMetricFocus: "lead"
+  };
+  const result = await apiPost("/api/meta-insights", payload);
+  if (!result.ok || !result.data?.ok) {
+    throw new Error(result.data?.error || "Falha ao consultar a Meta API para o período.");
+  }
+  return result.data.summary || {};
+}
+
+async function compareMonths() {
+  if (!compareMonthCurrentEl || !compareMonthPreviousEl || !monthCompareChartEl) return;
+
+  const selectedClientEl = metricsClientSelectEl || clientSelectEl;
+  const selected = selectedClientEl && selectedClientEl.options[selectedClientEl.selectedIndex];
+  if (!selected || !selected.value) {
+    setMonthCompareStatus("warn", "Selecione um cliente antes de comparar meses.");
+    return;
+  }
+
+  const currentRange = monthRangeFromInput(compareMonthCurrentEl.value);
+  const previousRange = monthRangeFromInput(compareMonthPreviousEl.value);
+  if (!currentRange || !previousRange) {
+    setMonthCompareStatus("warn", "Escolha os dois meses para comparar.");
+    return;
+  }
+
+  if (compareMonthCurrentEl.value === compareMonthPreviousEl.value) {
+    setMonthCompareStatus("warn", "Escolha meses diferentes para uma comparação válida.");
+    return;
+  }
+
+  setMonthCompareStatus("", "Comparando meses...");
+  monthCompareChartEl.innerHTML = "";
+
+  try {
+    const [currentSummary, previousSummary] = await Promise.all([
+      fetchMetricsSummaryForRange(selected, currentRange.start, currentRange.end),
+      fetchMetricsSummaryForRange(selected, previousRange.start, previousRange.end)
+    ]);
+
+    const currentCtr = Number(currentSummary.ctr || 0);
+    const previousCtr = Number(previousSummary.ctr || 0);
+    const currentCpc = Number(currentSummary.cpc || 0);
+    const previousCpc = Number(previousSummary.cpc || 0);
+
+    monthCompareChartEl.innerHTML = [
+      renderMonthCompareCard("Gasto", Number(currentSummary.spend || 0), Number(previousSummary.spend || 0), brMoney),
+      renderMonthCompareCard("Cliques", Number(currentSummary.clicks || 0), Number(previousSummary.clicks || 0), brInt),
+      renderMonthCompareCard("Leads", Number(currentSummary.leads || 0), Number(previousSummary.leads || 0), brInt),
+      renderMonthCompareCard("CTR", currentCtr, previousCtr, toPercent),
+      renderMonthCompareCard("CPC", currentCpc, previousCpc, brMoney, true),
+      renderMonthCompareCard("CPM", Number(currentSummary.cpm || 0), Number(previousSummary.cpm || 0), brMoney, true)
+    ].join("");
+
+    setMonthCompareStatus("ok", `${currentRange.label} comparado com ${previousRange.label}.`);
+  } catch (error) {
+    setMonthCompareStatus("err", error.message || "Não foi possível comparar os meses agora.");
+  }
 }
 
 function renderMetricsCharts(summary = {}) {
@@ -2244,6 +2382,8 @@ function clearMetrics() {
   rawOutputEl.textContent = "Sem requisicao executada.";
   lastMetricsPayload = null;
   renderMetricsCharts({});
+  if (monthCompareChartEl) monthCompareChartEl.innerHTML = "";
+  setMonthCompareStatus("", "Selecione dois meses e clique em Comparar meses.");
 }
 
 function updateCards(summary) {
@@ -2581,6 +2721,17 @@ function bindEvents() {
       if (dateQuick15Btn) dateQuick15Btn.addEventListener("click", () => setQuickPeriod(15));
       if (dateQuick30Btn) dateQuick30Btn.addEventListener("click", () => setQuickPeriod(30));
       if (dateQuickMonthBtn) dateQuickMonthBtn.addEventListener("click", setCurrentMonthRange);
+
+      if (compareMonthCurrentEl && compareMonthPreviousEl) {
+        const now = new Date();
+        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+        const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const previousMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}`;
+        compareMonthCurrentEl.value = currentMonth;
+        compareMonthPreviousEl.value = previousMonth;
+        setMonthCompareStatus("", "Selecione dois meses e clique em Comparar meses.");
+      }
+      if (compareMonthsBtnEl) compareMonthsBtnEl.addEventListener("click", compareMonths);
 
       // Inicializa em 30 dias para melhor visão no primeiro uso
       setQuickPeriod(30);
