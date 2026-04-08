@@ -241,6 +241,28 @@ function hasMetricsContext(metrics, rows, campaignDetail, objectiveSummary, clie
   );
 }
 
+function classifyQuestionIntent(question) {
+  const text = String(question || "").trim().toLowerCase();
+  if (!text) return "none";
+
+  if (/^(oi|ola|olá|bom dia|boa tarde|boa noite|e ai|e aí|opa|hello|hi)\b/.test(text)) {
+    return "general";
+  }
+
+  const analysisTerms = [
+    "campanha", "anuncio", "anúncio", "conjunto", "adset", "meta ads", "metric", "métrica", "métricas",
+    "ctr", "cpc", "cpl", "cpm", "roas", "lead", "leads", "convers", "resultado", "resultado",
+    "escalar", "verba", "segment", "criativo", "funil", "performance", "otimiza", "otimização",
+    "analisar", "analise", "análise", "trafego", "tráfego", "remarketing", "alcance", "clique"
+  ];
+
+  if (analysisTerms.some((term) => text.includes(term))) {
+    return "analysis";
+  }
+
+  return "general";
+}
+
 function fallbackGeneralAdvice(userName, question) {
   const userFirstName = firstNameOf(userName);
   const cleanQuestion = String(question || "").trim();
@@ -271,6 +293,11 @@ function fallbackGeneralAdvice(userName, question) {
 
 function fallbackAdvice(metrics, reportType, periodDays, clientName, userName, question, rows, campaignDetail) {
   const objectiveSummary = "";
+  const questionIntent = classifyQuestionIntent(question);
+  if (questionIntent === "general") {
+    return fallbackGeneralAdvice(userName, question);
+  }
+
   if (!hasMetricsContext(metrics, rows, campaignDetail, objectiveSummary, clientName) && question) {
     return fallbackGeneralAdvice(userName, question);
   }
@@ -351,7 +378,9 @@ module.exports = async function handler(request, response) {
   const metrics = body.metrics && typeof body.metrics === "object" ? body.metrics : {};
   const rows = Array.isArray(body.rows) ? body.rows : [];
   const selectedCampaign = body.selectedCampaign && typeof body.selectedCampaign === "object" ? body.selectedCampaign : null;
-  const generalMode = !hasMetricsContext(metrics, rows, selectedCampaign, objectiveSummary, clientName);
+  const questionIntent = classifyQuestionIntent(question);
+  const generalMode = questionIntent === "general"
+    || (!hasMetricsContext(metrics, rows, selectedCampaign, objectiveSummary, clientName) && questionIntent !== "analysis");
   const requestedProvider = String(body.aiProvider || "").trim().toLowerCase();
   const requestedOrDefaultProvider = requestedProvider || "anthropic";
   const userProviderApiKey = await getUserProviderApiKey(user.id, requestedOrDefaultProvider);
