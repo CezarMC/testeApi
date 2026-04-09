@@ -1071,7 +1071,7 @@ function getClientViewIndicators() {
   const focusCostLabel = String(kFocusCostLabelEl?.textContent || "Custo por resultado");
   return [
     ["Gasto total", kSpendEl.textContent],
-    ["Investimento diário", kDailySpendEl.textContent],
+    ["Gasto médio diário", kDailySpendEl.textContent],
     ["Público atingido", kReachEl.textContent],
     ["Impressões", kImpressionsEl.textContent],
     ["Cliques", kClicksEl.textContent],
@@ -2609,7 +2609,7 @@ function exportExecutivePdf() {
     ["CPM", document.getElementById("kCpm") ? document.getElementById("kCpm").textContent : "-"],
     ["Frequência", kFrequencyEl.textContent],
     ["Resultado principal", `${kResultsEl.textContent} (${kResultTypeEl.textContent})`],
-    ["Investimento diário", kDailySpendEl.textContent]
+    ["Gasto médio diário", kDailySpendEl.textContent]
   ];
 
   const stageLines = Array.from(stageBarsEl.querySelectorAll("div > div:first-child"))
