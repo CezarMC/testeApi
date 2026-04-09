@@ -1025,8 +1025,8 @@ function updateExecutiveBlocks(rows, summary, context = {}, dateStart, dateEnd) 
   const ctr = Number((summary?.kpis?.ctr ?? summary?.ctr) || 0);
   const linkCtr = Number((summary?.kpis?.link_ctr ?? summary?.advanced?.link_ctr) || 0);
   const focusCost = Number((summary?.kpis?.focus_cost ?? summary?.focus_cost) || 0);
-  const totalSpend = Number(summary?.spend || 0);
-  const objectiveText = `Período analisado: ${periodDays} dia(s) | Gasto total: ${brMoney(totalSpend)} | Gasto médio diário: ${brMoney(exec.dailySpend)} | Foco em ${exec.focusLabel} com ${brInt(exec.totalResults)} resultado(s). Custo por resultado: ${brMoney(focusCost)}. Qualidade: CTR ${toPercent(ctr)} | CTR link ${toPercent(linkCtr)} | Saúde ${exec.healthScore}/100 (${exec.healthTier}). Público atingido: ${brInt(exec.reach)} e ${brInt(exec.impressions)} impressões.`;
+  const totalSpendValue = Number(summary?.spend || 0);
+  const objectiveText = `Período analisado: ${periodDays} dia(s) | Gasto total: ${brMoney(totalSpendValue)} | Gasto médio diário: ${brMoney(exec.dailySpend)} | Foco em ${exec.focusLabel} com ${brInt(exec.totalResults)} resultado(s). Custo por resultado: ${brMoney(focusCost)}. Qualidade: CTR ${toPercent(ctr)} | CTR link ${toPercent(linkCtr)} | Saúde ${exec.healthScore}/100 (${exec.healthTier}). Público atingido: ${brInt(exec.reach)} e ${brInt(exec.impressions)} impressões.`;
   objectiveSummaryEl.textContent = objectiveText;
 
   const stageAgg = {
