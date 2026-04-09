@@ -2705,7 +2705,7 @@ function exportExecutivePdf() {
     { label: "Gasto total",            value: kSpendEl.textContent,                                                              cls: "blue"   },
     { label: "Gasto / dia ativo",      value: kDailySpendEl.textContent,                                                         cls: "blue"   },
     { label: "Resultado principal",    value: kResultsEl.textContent,                                                            cls: "green"  },
-    { label: "Custo por resultado",    value: document.getElementById("kFocusCost") ? document.getElementById("kFocusCost").textContent : "-", cls: "green"  },
+    { label: "Custo por resultado",    value: kCplEl ? kCplEl.textContent : "-",                                                  cls: "green"  },
     { label: "Público atingido",       value: kReachEl.textContent,                                                              cls: "purple" },
     { label: "Impressões",             value: kImpressionsEl.textContent,                                                        cls: "purple" },
     { label: "CTR",                    value: kCtrEl.textContent,                                                                cls: "amber"  },
@@ -2713,7 +2713,7 @@ function exportExecutivePdf() {
     { label: "CPM",                    value: document.getElementById("kCpm") ? document.getElementById("kCpm").textContent : "-", cls: "amber"  },
     { label: "Cliques",                value: kClicksEl.textContent,                                                             cls: "teal"   },
     { label: "Frequência",             value: kFrequencyEl.textContent,                                                          cls: "red"    },
-    { label: "Orçamento diário total", value: kConfiguredDailyBudgetEl ? kConfiguredDailyBudgetEl.textContent : "-",              cls: "blue"   }
+    { label: "Orçamento diário total", value: (() => { const v = Object.values(campaignDailyBudgets || {}).reduce((a, b) => a + b, 0); return v > 0 ? brMoney(v) : (kConfiguredDailyBudgetEl ? kConfiguredDailyBudgetEl.textContent : "-"); })(), cls: "blue" }
   ];
 
   const stageData    = lastStageData ? Object.values(lastStageData) : [];
