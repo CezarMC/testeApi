@@ -254,6 +254,7 @@ const kResultTypeEl = document.getElementById("kResultType");
 const kDailySpendEl = document.getElementById("kDailySpend");
 const kConfiguredDailyBudgetEl = document.getElementById("kConfiguredDailyBudget");
 const objectiveSummaryEl = document.getElementById("objectiveSummary");
+const operationalAuditEl = document.getElementById("operationalAudit");
 const stageBarsEl = document.getElementById("stageBars");
 const topAdsListEl = document.getElementById("topAdsList");
 const cvTitleEl = document.getElementById("cvTitle");
@@ -1043,8 +1044,24 @@ function updateExecutiveBlocks(rows, summary, context = {}, dateStart, dateEnd) 
   const linkCtr = Number((summary?.kpis?.link_ctr ?? summary?.advanced?.link_ctr) || 0);
   const focusCost = Number((summary?.kpis?.focus_cost ?? summary?.focus_cost) || 0);
   const totalSpendValue = Number(summary?.spend || 0);
-  const objectiveText = `Período analisado: ${periodDays} dia(s) | Soma de dias ativos das campanhas: ${exec.effectiveDays} | Gasto total: ${brMoney(totalSpendValue)} | Gasto médio por dia ativo: ${brMoney(exec.dailySpend)} | Foco em ${exec.focusLabel} com ${brInt(exec.totalResults)} resultado(s). Custo por resultado: ${brMoney(focusCost)}. Qualidade: CTR ${toPercent(ctr)} | CTR link ${toPercent(linkCtr)} | Saúde ${exec.healthScore}/100 (${exec.healthTier}). Público atingido: ${brInt(exec.reach)} e ${brInt(exec.impressions)} impressões.`;
+  const objectiveText = `Período analisado: ${periodDays} dia(s) | Base do gasto médio: ${exec.effectiveDays} campanha-dia com gasto | Gasto total: ${brMoney(totalSpendValue)} | Gasto médio por dia ativo: ${brMoney(exec.dailySpend)} | Foco em ${exec.focusLabel} com ${brInt(exec.totalResults)} resultado(s). Custo por resultado: ${brMoney(focusCost)}. Qualidade: CTR ${toPercent(ctr)} | CTR link ${toPercent(linkCtr)} | Saúde ${exec.healthScore}/100 (${exec.healthTier}). Público atingido: ${brInt(exec.reach)} e ${brInt(exec.impressions)} impressões.`;
   objectiveSummaryEl.textContent = objectiveText;
+
+  if (operationalAuditEl) {
+    const activeCampaignCount = Number(context?.activeCampaignCount || activeCampaignIdsList.length || 0);
+    const campaignsWithSpend = new Set(
+      rows
+        .filter((row) => Number(row?.spend || 0) > 0)
+        .map((row) => String(row?.campaign_id || "").trim())
+        .filter(Boolean)
+    ).size;
+    const campaignsWithoutSpend = Math.max(0, activeCampaignCount - campaignsWithSpend);
+    const budgetUsagePct = totalConfiguredBudget > 0 ? (exec.dailySpend / totalConfiguredBudget) * 100 : 0;
+    const budgetStatus = totalConfiguredBudget > 0
+      ? `Uso médio do orçamento diário: ${budgetUsagePct.toFixed(1).replace(".", ",")}%`
+      : "Orçamento diário não retornado pela Meta para as campanhas ativas.";
+    operationalAuditEl.textContent = `Campanhas ativas: ${brInt(activeCampaignCount)} | Campanhas com gasto no período: ${brInt(campaignsWithSpend)} | Campanhas ativas sem gasto: ${brInt(campaignsWithoutSpend)} | Base do cálculo: ${brInt(exec.effectiveDays)} campanha-dia com gasto | ${budgetStatus}`;
+  }
 
   const stageAgg = {
     etapa1: { label: "Etapa 1 - engajamento", spend: 0, results: 0 },
@@ -2380,6 +2397,7 @@ function clearMetrics() {
   kDailySpendEl.textContent = brMoney(0);
   if (kConfiguredDailyBudgetEl) kConfiguredDailyBudgetEl.textContent = brMoney(0);
   objectiveSummaryEl.textContent = "Carregue as métricas para gerar o resumo estratégico.";
+  if (operationalAuditEl) operationalAuditEl.textContent = "Carregue as métricas para auditar campanhas ativas, campanhas com gasto e base de cálculo.";
   stageBarsEl.innerHTML = "";
   topAdsListEl.innerHTML = "";
   campaignBreakdowns = [];
