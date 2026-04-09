@@ -592,6 +592,18 @@ function renderMonthCompareCard(label, currentValue, previousValue, formatter, i
   `;
 }
 
+function getActiveDayMetrics(summary = {}, context = {}, fallbackPeriodDays = 1) {
+  const spend = Number((summary?.kpis?.spend ?? summary?.spend) || 0);
+  const focusResults = Number((summary?.kpis?.focus_results ?? summary?.focus_results ?? summary?.leads) || 0);
+  const activeDays = Number(context?.totalCampaignActiveDaysWithSpend || context?.accountActiveDaysWithSpend || fallbackPeriodDays || 1);
+  const effectiveDays = Math.max(1, activeDays);
+  return {
+    activeDays: effectiveDays,
+    spendPerActiveDay: spend / effectiveDays,
+    focusPerActiveDay: focusResults / effectiveDays
+  };
+}
+
 function setMonthCompareStatus(kind, message) {
   if (!monthCompareStatusEl) return;
   monthCompareStatusEl.className = "status";
@@ -612,7 +624,10 @@ async function fetchMetricsSummaryForRange(selectedClientOption, dateStart, date
   if (!result.ok || !result.data?.ok) {
     throw new Error(result.data?.error || "Falha ao consultar a Meta API para o período.");
   }
-  return result.data.summary || {};
+  return {
+    summary: result.data.summary || {},
+    context: result.data.context || {}
+  };
 }
 
 async function compareMonths() {
@@ -641,10 +656,15 @@ async function compareMonths() {
   monthCompareChartEl.innerHTML = "";
 
   try {
-    const [currentSummary, previousSummary] = await Promise.all([
+    const [currentMetrics, previousMetrics] = await Promise.all([
       fetchMetricsSummaryForRange(selected, currentRange.start, currentRange.end),
       fetchMetricsSummaryForRange(selected, previousRange.start, previousRange.end)
     ]);
+
+    const currentSummary = currentMetrics.summary || {};
+    const previousSummary = previousMetrics.summary || {};
+    const currentActiveDayMetrics = getActiveDayMetrics(currentSummary, currentMetrics.context || {}, calcPeriodDays(currentRange.start, currentRange.end));
+    const previousActiveDayMetrics = getActiveDayMetrics(previousSummary, previousMetrics.context || {}, calcPeriodDays(previousRange.start, previousRange.end));
 
     const currentCtr = Number(currentSummary.ctr || 0);
     const previousCtr = Number(previousSummary.ctr || 0);
@@ -657,9 +677,11 @@ async function compareMonths() {
     const focusLabel = String(currentSummary.kpis?.focus_label || getFocusLabel(getSelectedMetricFocus()));
 
     monthCompareChartEl.innerHTML = [
-      renderMonthCompareCard("Gasto", Number(currentSummary.spend || 0), Number(previousSummary.spend || 0), brMoney),
+      renderMonthCompareCard("Gasto total", Number(currentSummary.spend || 0), Number(previousSummary.spend || 0), brMoney),
+      renderMonthCompareCard("Gasto por dia ativo", currentActiveDayMetrics.spendPerActiveDay, previousActiveDayMetrics.spendPerActiveDay, brMoney),
       renderMonthCompareCard("Cliques", Number(currentSummary.clicks || 0), Number(previousSummary.clicks || 0), brInt),
       renderMonthCompareCard(focusLabel, currentFocusResults, previousFocusResults, brInt),
+      renderMonthCompareCard(`${focusLabel} por dia ativo`, currentActiveDayMetrics.focusPerActiveDay, previousActiveDayMetrics.focusPerActiveDay, (value) => Number(value || 0).toFixed(2).replace(".", ",")),
       renderMonthCompareCard("CTR", currentCtr, previousCtr, toPercent),
       renderMonthCompareCard("CPC", currentCpc, previousCpc, brMoney, true),
       renderMonthCompareCard("Custo por resultado", currentFocusCost, previousFocusCost, brMoney, true),
@@ -719,12 +741,12 @@ function renderMetricsCharts(summary = {}) {
   const history = [...metricsHistory].slice(0, 8).reverse();
   if (history.length < 2) {
     metricsTrendChartEl.innerHTML = "<div class='chart-hint'>Ainda não há histórico suficiente para desenhar tendência.</div>";
-    metricsTrendHintEl.textContent = "Atualize as métricas algumas vezes para enxergar tendência de gasto e leads.";
+    metricsTrendHintEl.textContent = "Atualize as métricas algumas vezes para enxergar tendência de gasto por dia ativo e resultados foco por dia ativo.";
     return;
   }
 
-  const spendValues = history.map((item) => Number(item.metrics?.spend || 0));
-  const leadValues = history.map((item) => Number(item.metrics?.leads || 0));
+  const spendValues = history.map((item) => Number(item.activeDayMetrics?.spendPerActiveDay || 0));
+  const leadValues = history.map((item) => Number(item.activeDayMetrics?.focusPerActiveDay || 0));
   const maxSpend = Math.max(...spendValues, 1);
   const maxLeads = Math.max(...leadValues, 1);
   const chartWidth = 330;
@@ -748,13 +770,13 @@ function renderMetricsCharts(summary = {}) {
   }).join(" ");
 
   metricsTrendChartEl.innerHTML = `
-    <svg viewBox="0 0 ${chartWidth} ${chartHeight}" width="100%" height="140" role="img" aria-label="Evolução de gasto e leads">
+    <svg viewBox="0 0 ${chartWidth} ${chartHeight}" width="100%" height="140" role="img" aria-label="Evolução de gasto por dia ativo e resultados por dia ativo">
       <line x1="${padX}" y1="${chartHeight - padY}" x2="${chartWidth - padX}" y2="${chartHeight - padY}" stroke="#d8e4ef" stroke-width="1" />
       <polyline fill="none" stroke="#0f6ea8" stroke-width="2.4" points="${spendPoints}" />
       <polyline fill="none" stroke="#d98c10" stroke-width="2.4" points="${leadsPoints}" />
     </svg>
   `;
-  metricsTrendHintEl.textContent = `Últimas ${history.length} atualizações: linha azul = gasto, linha laranja = leads.`;
+  metricsTrendHintEl.textContent = `Últimas ${history.length} atualizações: linha azul = gasto por dia ativo, linha laranja = resultados por dia ativo.`;
 }
 
 function normalizeObjective(obj) {
@@ -2457,13 +2479,14 @@ function updateMetricsHistory(payload) {
     client: payload.clientName,
     reportType: payload.reportType,
     periodDays: payload.periodDays,
-    metrics: payload.metrics
+    metrics: payload.metrics,
+    activeDayMetrics: payload.activeDayMetrics || { activeDays: 1, spendPerActiveDay: 0, focusPerActiveDay: 0 }
   });
   if (metricsHistory.length > 10) metricsHistory.length = 10;
   const ul = document.getElementById("metricsHistory");
   if (!ul) return;
   ul.innerHTML = metricsHistory.map(item =>
-    `<li><b>${item.date}</b> - ${item.client} (${item.reportType}, ${item.periodDays}d): Gasto ${brMoney(item.metrics.spend)}, Cliques ${brInt(item.metrics.clicks)}, Leads ${brInt(item.metrics.leads)}</li>`
+    `<li><b>${item.date}</b> - ${item.client} (${item.reportType}, ${item.periodDays}d): Gasto ${brMoney(item.metrics.spend)}, Gasto/dia ativo ${brMoney(item.activeDayMetrics.spendPerActiveDay)}, Resultados/dia ativo ${Number(item.activeDayMetrics.focusPerActiveDay || 0).toFixed(2).replace(".", ",")}</li>`
   ).join("");
 }
 
@@ -2566,6 +2589,7 @@ async function loadMetrics() {
     rawOutputEl.textContent = "Sem conversões retornadas pela Meta API neste período.";
   }
   const periodDays = calcPeriodDays(dateStart, dateEnd);
+  const activeDayMetrics = getActiveDayMetrics(result.data.summary || {}, result.data.context || {}, periodDays);
   lastMetricsPayload = {
     clientName: selected.dataset.name || "Cliente",
     reportType: reportTypeEl.value,
@@ -2574,6 +2598,7 @@ async function loadMetrics() {
     dateStart,
     dateEnd,
     metrics: result.data.summary || {},
+    activeDayMetrics,
     rows: result.data.rows || [],
     selectedCampaign: getSelectedCampaignDetail()
   };
