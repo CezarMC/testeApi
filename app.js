@@ -1041,7 +1041,7 @@ function updateExecutiveBlocks(rows, summary, context = {}, dateStart, dateEnd) 
     stageAgg[stage.key].results += Number(row.results || row.leads || 0);
   });
 
-  const totalSpend = Math.max(0.0001, Number(summary.spend || 0));
+  const totalSpend = Math.max(0.0001, totalSpendValue);
   stageBarsEl.innerHTML = Object.values(stageAgg)
     .map((item) => {
       const pct = (item.spend / totalSpend) * 100;
