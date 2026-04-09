@@ -133,6 +133,7 @@ let metricsHistory = [];
 let campaignBreakdowns = [];
 let activeCampaignIdsList = [];
 let campaignDailyBudgets = {};
+let campaignActiveDaysWithSpend = {};
 let availableAiProviders = [];
 let serverConfiguredAiProviders = [];
 let userConfiguredAiProviders = [];
@@ -888,7 +889,9 @@ function renderCampaignDetailChart(campaign) {
     return;
   }
 
-  campaignDetailMetaEl.textContent = `Objetivo: ${normalizeObjective(campaign.objective)} | Gasto: ${brMoney(campaign.spend)} | Resultados: ${brInt(campaign.results)} | Cliques: ${brInt(campaign.clicks)} | CTR: ${toPercent(campaign.ctr)}`;
+  const activeDays = Number(campaignActiveDaysWithSpend?.[campaign.id] || 0);
+  const avgPerActiveDay = activeDays > 0 ? Number(campaign.spend || 0) / activeDays : 0;
+  campaignDetailMetaEl.textContent = `Objetivo: ${normalizeObjective(campaign.objective)} | Gasto: ${brMoney(campaign.spend)} | Dias ativos: ${activeDays} | Médio/dia ativo: ${brMoney(avgPerActiveDay)} | Resultados: ${brInt(campaign.results)} | Cliques: ${brInt(campaign.clicks)} | CTR: ${toPercent(campaign.ctr)}`;
 
   const items = campaign.items.length ? campaign.items : [{
     label: campaign.name,
@@ -928,7 +931,7 @@ function renderCampaignDetailChart(campaign) {
     `;
   }).join("");
 
-  campaignDetailSummaryEl.textContent = `${campaign.items.length} item(ns) no gráfico. A IA usa esse recorte isolado ao analisar a campanha selecionada.`;
+  campaignDetailSummaryEl.textContent = `${campaign.items.length} item(ns) no gráfico. Campanha com ${activeDays} dia(s) ativo(s) com gasto no período.`;
 }
 
 function syncCampaignDetail(rows = []) {
@@ -941,9 +944,11 @@ function syncCampaignDetail(rows = []) {
   campaignBreakdowns
     .filter((campaign) => !activeCampaignIdsList.length || activeCampaignSet.has(campaign.id))
     .forEach((campaign) => {
+      const activeDays = Number(campaignActiveDaysWithSpend?.[campaign.id] || 0);
+      const avgPerActiveDay = activeDays > 0 ? Number(campaign.spend || 0) / activeDays : 0;
       const option = document.createElement("option");
       option.value = campaign.key;
-      option.textContent = `${campaign.name} | ${normalizeObjective(campaign.objective)} | ${brMoney(campaign.spend)} | ${brInt(campaign.results)} resultado(s)`;
+      option.textContent = `${campaign.name} | ${normalizeObjective(campaign.objective)} | ${brMoney(campaign.spend)} | ${activeDays} dia(s) ativo(s) | ${brMoney(avgPerActiveDay)}/dia ativo | ${brInt(campaign.results)} resultado(s)`;
       campaignDetailSelectEl.appendChild(option);
     });
 
@@ -1088,7 +1093,7 @@ function getClientViewIndicators() {
   const focusCostLabel = String(kFocusCostLabelEl?.textContent || "Custo por resultado");
   return [
     ["Gasto total", kSpendEl.textContent],
-    ["Gasto médio diário", kDailySpendEl.textContent],
+    ["Gasto médio por dia ativo", kDailySpendEl.textContent],
     ["Público atingido", kReachEl.textContent],
     ["Impressões", kImpressionsEl.textContent],
     ["Cliques", kClicksEl.textContent],
@@ -2373,10 +2378,12 @@ function clearMetrics() {
   kResultsEl.textContent = brInt(0);
   kResultTypeEl.textContent = "-";
   kDailySpendEl.textContent = brMoney(0);
+  if (kConfiguredDailyBudgetEl) kConfiguredDailyBudgetEl.textContent = brMoney(0);
   objectiveSummaryEl.textContent = "Carregue as métricas para gerar o resumo estratégico.";
   stageBarsEl.innerHTML = "";
   topAdsListEl.innerHTML = "";
   campaignBreakdowns = [];
+  campaignActiveDaysWithSpend = {};
   if (campaignDetailSelectEl) campaignDetailSelectEl.innerHTML = "<option value=''>Carregue as métricas para listar campanhas</option>";
   renderCampaignDetailChart(null);
   cvIndicatorsEl.innerHTML = "";
@@ -2511,6 +2518,7 @@ async function loadMetrics() {
   updateExecutiveBlocks(result.data.rows || [], result.data.summary || {}, result.data.context || {}, dateStart, dateEnd);
   activeCampaignIdsList = (result.data.context || {}).activeCampaignIdsList || [];
   campaignDailyBudgets = (result.data.context || {}).campaignDailyBudgets || {};
+  campaignActiveDaysWithSpend = (result.data.context || {}).campaignActiveDaysWithSpend || {};
   syncCampaignDetail(result.data.rows || []);
 
   // Diagnóstico de conversões: mostra breakdown de action_types reais recebidos da Meta API
@@ -2628,7 +2636,7 @@ function exportExecutivePdf() {
     ["CPM", document.getElementById("kCpm") ? document.getElementById("kCpm").textContent : "-"],
     ["Frequência", kFrequencyEl.textContent],
     ["Resultado principal", `${kResultsEl.textContent} (${kResultTypeEl.textContent})`],
-    ["Gasto médio diário", kDailySpendEl.textContent]
+    ["Gasto médio por dia ativo", kDailySpendEl.textContent]
   ];
 
   const stageLines = Array.from(stageBarsEl.querySelectorAll("div > div:first-child"))
