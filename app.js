@@ -643,12 +643,12 @@ async function compareMonths() {
 
     const currentCtr = Number(currentSummary.ctr || 0);
     const previousCtr = Number(previousSummary.ctr || 0);
-    const currentCpc = Number(currentSummary.kpis?.cpc ?? currentSummary.cpc || 0);
-    const previousCpc = Number(previousSummary.kpis?.cpc ?? previousSummary.cpc || 0);
-    const currentFocusResults = Number(currentSummary.kpis?.focus_results ?? currentSummary.focus_results ?? currentSummary.leads || 0);
-    const previousFocusResults = Number(previousSummary.kpis?.focus_results ?? previousSummary.focus_results ?? previousSummary.leads || 0);
-    const currentFocusCost = Number(currentSummary.kpis?.focus_cost ?? currentSummary.focus_cost ?? currentSummary.cpl || 0);
-    const previousFocusCost = Number(previousSummary.kpis?.focus_cost ?? previousSummary.focus_cost ?? previousSummary.cpl || 0);
+    const currentCpc = Number((currentSummary.kpis?.cpc ?? currentSummary.cpc) || 0);
+    const previousCpc = Number((previousSummary.kpis?.cpc ?? previousSummary.cpc) || 0);
+    const currentFocusResults = Number((currentSummary.kpis?.focus_results ?? currentSummary.focus_results ?? currentSummary.leads) || 0);
+    const previousFocusResults = Number((previousSummary.kpis?.focus_results ?? previousSummary.focus_results ?? previousSummary.leads) || 0);
+    const currentFocusCost = Number((currentSummary.kpis?.focus_cost ?? currentSummary.focus_cost ?? currentSummary.cpl) || 0);
+    const previousFocusCost = Number((previousSummary.kpis?.focus_cost ?? previousSummary.focus_cost ?? previousSummary.cpl) || 0);
     const focusLabel = String(currentSummary.kpis?.focus_label || getFocusLabel(getSelectedMetricFocus()));
 
     monthCompareChartEl.innerHTML = [
@@ -671,10 +671,10 @@ function renderMetricsCharts(summary = {}) {
   if (!metricsVolumeChartEl || !metricsEfficiencyChartEl || !metricsTrendChartEl || !metricsTrendHintEl) return;
 
   const kpis = summary?.kpis || {};
-  const spend = Number(kpis.spend ?? summary.spend || 0);
-  const clicks = Number(kpis.clicks ?? summary.clicks || 0);
-  const focusResults = Number(kpis.focus_results ?? summary.focus_results ?? summary.leads || 0);
-  const impressions = Number(kpis.impressions ?? summary.impressions || 0);
+  const spend = Number((kpis.spend ?? summary.spend) || 0);
+  const clicks = Number((kpis.clicks ?? summary.clicks) || 0);
+  const focusResults = Number((kpis.focus_results ?? summary.focus_results ?? summary.leads) || 0);
+  const impressions = Number((kpis.impressions ?? summary.impressions) || 0);
   const focusLabel = String(kpis.focus_label || getFocusLabel(kpis.focus_action_type || getSelectedMetricFocus()));
 
   const volumeItems = [
@@ -688,11 +688,11 @@ function renderMetricsCharts(summary = {}) {
     .map((item) => chartRowHtml(item.label, item.text, (Number(item.value || 0) / maxVolume) * 100, item.tone))
     .join("");
 
-  const ctr = Number(kpis.ctr ?? summary.ctr || 0);
-  const linkCtr = Number(kpis.link_ctr ?? summary.advanced?.link_ctr || 0);
-  const cpc = Number(kpis.cpc ?? summary.cpc || 0);
-  const cpr = Number(kpis.focus_cost ?? summary.focus_cost ?? summary.cpl || 0);
-  const cpm = Number(kpis.cpm ?? summary.cpm || 0);
+  const ctr = Number((kpis.ctr ?? summary.ctr) || 0);
+  const linkCtr = Number((kpis.link_ctr ?? summary.advanced?.link_ctr) || 0);
+  const cpc = Number((kpis.cpc ?? summary.cpc) || 0);
+  const cpr = Number((kpis.focus_cost ?? summary.focus_cost ?? summary.cpl) || 0);
+  const cpm = Number((kpis.cpm ?? summary.cpm) || 0);
   const clickToFocusRate = Number(kpis.click_to_focus_rate || 0);
 
   const ctrTarget = 2;
@@ -984,12 +984,12 @@ function detectFunnelStage(row) {
 
 function computeExecutiveMetrics(rows, summary, periodDays) {
   const kpis = summary?.kpis || {};
-  const reach = Number(kpis.reach ?? summary.reach || 0);
-  const impressions = Number(kpis.impressions ?? summary.impressions || 0);
-  const frequency = Number(kpis.frequency ?? summary.frequency || 0);
-  const spend = Number(kpis.spend ?? summary.spend || 0);
+  const reach = Number((kpis.reach ?? summary.reach) || 0);
+  const impressions = Number((kpis.impressions ?? summary.impressions) || 0);
+  const frequency = Number((kpis.frequency ?? summary.frequency) || 0);
+  const spend = Number((kpis.spend ?? summary.spend) || 0);
   const dailySpend = spend / Math.max(1, periodDays);
-  const totalResults = Number(kpis.focus_results ?? summary.focus_results ?? summary.total_results || 0);
+  const totalResults = Number((kpis.focus_results ?? summary.focus_results ?? summary.total_results) || 0);
   const focusType = String(kpis.focus_action_type || summary.focus_action_type || "lead");
   const focusLabel = String(kpis.focus_label || getFocusLabel(focusType));
   const health = summary?.health || { score: 0, tier: "fraco" };
@@ -1018,9 +1018,9 @@ function updateExecutiveBlocks(rows, summary, context = {}, dateStart, dateEnd) 
   kResultTypeEl.textContent = `${exec.healthTier} (${exec.healthScore}/100)`;
   kDailySpendEl.textContent = brMoney(exec.dailySpend);
 
-  const ctr = Number(summary?.kpis?.ctr ?? summary?.ctr || 0);
-  const linkCtr = Number(summary?.kpis?.link_ctr ?? summary?.advanced?.link_ctr || 0);
-  const focusCost = Number(summary?.kpis?.focus_cost ?? summary?.focus_cost || 0);
+  const ctr = Number((summary?.kpis?.ctr ?? summary?.ctr) || 0);
+  const linkCtr = Number((summary?.kpis?.link_ctr ?? summary?.advanced?.link_ctr) || 0);
+  const focusCost = Number((summary?.kpis?.focus_cost ?? summary?.focus_cost) || 0);
   const objectiveText = `Período analisado: ${periodDays} dia(s). Foco em ${exec.focusLabel} com ${brInt(exec.totalResults)} resultado(s). Custo por resultado: ${brMoney(focusCost)}. Qualidade: CTR ${toPercent(ctr)} | CTR link ${toPercent(linkCtr)} | Saúde ${exec.healthScore}/100 (${exec.healthTier}). Público atingido: ${brInt(exec.reach)} e ${brInt(exec.impressions)} impressões.`;
   objectiveSummaryEl.textContent = objectiveText;
 
@@ -2383,14 +2383,14 @@ function updateCards(summary) {
   if (kFocusLabelEl) kFocusLabelEl.textContent = focusLabel;
   if (kFocusCostLabelEl) kFocusCostLabelEl.textContent = `Custo por ${focusLabel.slice(0, -1) || "resultado"}`;
 
-  kSpendEl.textContent = brMoney(kpis.spend ?? summary.spend || 0);
-  kClicksEl.textContent = brInt(kpis.clicks ?? summary.clicks || 0);
-  kLeadsEl.textContent = brInt(kpis.focus_results ?? summary.focus_results ?? summary.leads || 0);
-  kCtrEl.textContent = `${Number(kpis.ctr ?? summary.ctr || 0).toFixed(2).replace(".", ",")}%`;
-  kCpcEl.textContent = brMoney(kpis.cpc ?? summary.cpc || 0);
-  kCplEl.textContent = brMoney(kpis.focus_cost ?? summary.focus_cost ?? summary.cpl || 0);
-  kLinkCtrEl.textContent = toPercent(kpis.link_ctr ?? summary.advanced?.link_ctr || 0);
-  kCpmEl.textContent = brMoney(kpis.cpm ?? summary.cpm || 0);
+  kSpendEl.textContent = brMoney((kpis.spend ?? summary.spend) || 0);
+  kClicksEl.textContent = brInt((kpis.clicks ?? summary.clicks) || 0);
+  kLeadsEl.textContent = brInt((kpis.focus_results ?? summary.focus_results ?? summary.leads) || 0);
+  kCtrEl.textContent = `${Number((kpis.ctr ?? summary.ctr) || 0).toFixed(2).replace(".", ",")}%`;
+  kCpcEl.textContent = brMoney((kpis.cpc ?? summary.cpc) || 0);
+  kCplEl.textContent = brMoney((kpis.focus_cost ?? summary.focus_cost ?? summary.cpl) || 0);
+  kLinkCtrEl.textContent = toPercent((kpis.link_ctr ?? summary.advanced?.link_ctr) || 0);
+  kCpmEl.textContent = brMoney((kpis.cpm ?? summary.cpm) || 0);
   kMsgStart7dEl.textContent = brInt(summary.advanced?.messaging_conversation_started_7d || 0);
 }
 
