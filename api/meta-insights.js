@@ -828,6 +828,9 @@ module.exports = async function handler(request, response) {
       })
       .sort((a, b) => b.spend - a.spend || a.campaign_name.localeCompare(b.campaign_name, "pt-BR"));
 
+    const totalCampaignActiveDaysWithSpend = Array.from(activityDaysData.byCampaign.values())
+      .reduce((sum, days) => sum + Number(days || 0), 0);
+
     return json(response, 200, {
       ok: true,
       context: {
@@ -853,6 +856,7 @@ module.exports = async function handler(request, response) {
         activeCampaignsCatalog: Array.from(activeCampaignCatalog.values()),
         campaignDailyBudgets: Object.fromEntries(campaignBudgets),
         accountActiveDaysWithSpend: activityDaysData.accountActiveDaysCount,
+        totalCampaignActiveDaysWithSpend,
         campaignActiveDaysWithSpend: Object.fromEntries(activityDaysData.byCampaign),
         conversionBreakdown,
         totalRows: topRows.length

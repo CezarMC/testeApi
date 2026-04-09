@@ -1022,7 +1022,7 @@ function computeExecutiveMetrics(rows, summary, periodDays, activeDaysWithSpend 
 
 function updateExecutiveBlocks(rows, summary, context = {}, dateStart, dateEnd) {
   const periodDays = calcPeriodDays(dateStart || context.since, dateEnd || context.until);
-  const activeDaysWithSpend = Number(context?.accountActiveDaysWithSpend || 0);
+  const activeDaysWithSpend = Number(context?.totalCampaignActiveDaysWithSpend || context?.accountActiveDaysWithSpend || 0);
   const exec = computeExecutiveMetrics(rows, summary, periodDays, activeDaysWithSpend);
 
   kReachEl.textContent = brInt(exec.reach);
@@ -1043,7 +1043,7 @@ function updateExecutiveBlocks(rows, summary, context = {}, dateStart, dateEnd) 
   const linkCtr = Number((summary?.kpis?.link_ctr ?? summary?.advanced?.link_ctr) || 0);
   const focusCost = Number((summary?.kpis?.focus_cost ?? summary?.focus_cost) || 0);
   const totalSpendValue = Number(summary?.spend || 0);
-  const objectiveText = `Período analisado: ${periodDays} dia(s) | Dias ativos com gasto: ${exec.effectiveDays} | Gasto total: ${brMoney(totalSpendValue)} | Gasto médio por dia ativo: ${brMoney(exec.dailySpend)} | Foco em ${exec.focusLabel} com ${brInt(exec.totalResults)} resultado(s). Custo por resultado: ${brMoney(focusCost)}. Qualidade: CTR ${toPercent(ctr)} | CTR link ${toPercent(linkCtr)} | Saúde ${exec.healthScore}/100 (${exec.healthTier}). Público atingido: ${brInt(exec.reach)} e ${brInt(exec.impressions)} impressões.`;
+  const objectiveText = `Período analisado: ${periodDays} dia(s) | Soma de dias ativos das campanhas: ${exec.effectiveDays} | Gasto total: ${brMoney(totalSpendValue)} | Gasto médio por dia ativo: ${brMoney(exec.dailySpend)} | Foco em ${exec.focusLabel} com ${brInt(exec.totalResults)} resultado(s). Custo por resultado: ${brMoney(focusCost)}. Qualidade: CTR ${toPercent(ctr)} | CTR link ${toPercent(linkCtr)} | Saúde ${exec.healthScore}/100 (${exec.healthTier}). Público atingido: ${brInt(exec.reach)} e ${brInt(exec.impressions)} impressões.`;
   objectiveSummaryEl.textContent = objectiveText;
 
   const stageAgg = {
