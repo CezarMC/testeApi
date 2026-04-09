@@ -469,6 +469,58 @@ async function fetchActiveCampaignCatalog(apiVersion, accessToken, adAccountId) 
   return campaigns;
 }
 
+async function fetchCampaignActivityDays(apiVersion, accessToken, adAccountId, since, until, activeCampaignIds = new Set()) {
+  const byCampaignDays = new Map();
+  const accountActiveDays = new Set();
+  if (!activeCampaignIds.size) {
+    return { accountActiveDaysCount: 0, byCampaign: byCampaignDays };
+  }
+
+  const query = new URLSearchParams();
+  query.set("access_token", accessToken);
+  query.set("fields", "campaign_id,spend,date_start");
+  query.set("level", "campaign");
+  query.set("limit", "500");
+  query.set("time_increment", "1");
+  query.set("time_range", JSON.stringify({ since, until }));
+
+  let nextUrl = `https://graph.facebook.com/${apiVersion}/act_${adAccountId}/insights?${query.toString()}`;
+  let pageCount = 0;
+  const MAX_PAGES = 40;
+
+  while (nextUrl && pageCount < MAX_PAGES) {
+    const response = await fetch(nextUrl);
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data?.error?.message || "Falha ao consultar dias ativos das campanhas.");
+    }
+
+    const rows = Array.isArray(data?.data) ? data.data : [];
+    rows.forEach((row) => {
+      const campaignId = String(row?.campaign_id || "").trim();
+      if (!campaignId || !activeCampaignIds.has(campaignId)) return;
+      const spend = Number(row?.spend || 0);
+      const day = String(row?.date_start || "").trim();
+      if (!day || spend <= 0) return;
+
+      if (!byCampaignDays.has(campaignId)) byCampaignDays.set(campaignId, new Set());
+      byCampaignDays.get(campaignId).add(day);
+      accountActiveDays.add(day);
+    });
+
+    nextUrl = data?.paging?.next || null;
+    pageCount += 1;
+  }
+
+  const byCampaign = new Map(
+    Array.from(byCampaignDays.entries()).map(([campaignId, daysSet]) => [campaignId, daysSet.size])
+  );
+  return {
+    accountActiveDaysCount: accountActiveDays.size,
+    byCampaign
+  };
+}
+
 module.exports = async function handler(request, response) {
   if (request.method !== "POST") {
     return json(response, 405, { error: "Use POST." });
@@ -538,6 +590,13 @@ module.exports = async function handler(request, response) {
   const campaignBudgets = new Map(
     Array.from(activeCampaignCatalog.values()).map((campaign) => [campaign.id, campaign.daily_budget || 0])
   );
+
+  let activityDaysData = { accountActiveDaysCount: 0, byCampaign: new Map() };
+  try {
+    activityDaysData = await fetchCampaignActivityDays(apiVersion, accessToken, adAccountId, since, until, activeCampaignIds);
+  } catch (error) {
+    activityDaysData = { accountActiveDaysCount: 0, byCampaign: new Map() };
+  }
 
   const levelByType = { basico: "campaign", completo: "adset", detalhado: "ad" };
   const fieldsByType = {
@@ -793,6 +852,8 @@ module.exports = async function handler(request, response) {
         activeCampaignIdsList: Array.from(activeCampaignIds),
         activeCampaignsCatalog: Array.from(activeCampaignCatalog.values()),
         campaignDailyBudgets: Object.fromEntries(campaignBudgets),
+        accountActiveDaysWithSpend: activityDaysData.accountActiveDaysCount,
+        campaignActiveDaysWithSpend: Object.fromEntries(activityDaysData.byCampaign),
         conversionBreakdown,
         totalRows: topRows.length
       },
