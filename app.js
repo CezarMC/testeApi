@@ -1708,6 +1708,10 @@ function openMetricsScreen() {
   if (!metricsAppEl) return;
   metricsAppEl.classList.add("metrics-screen");
   metricsAppEl.classList.remove("panel-screen");
+  ["loadMetricsBtn", "openMetricsScreenBtn", "clientViewBtn", "exportPdfBtn"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove("hidden");
+  });
 }
 
 function openPanelScreen() {
