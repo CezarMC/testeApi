@@ -430,11 +430,11 @@ async function fetchAdMediaMap(apiVersion, accessToken, adIds) {
   }
 }
 
-async function fetchActiveCampaignIds(apiVersion, accessToken, adAccountId) {
-  const ids = new Set();
+async function fetchActiveCampaignCatalog(apiVersion, accessToken, adAccountId) {
+  const campaigns = new Map();
   const query = new URLSearchParams();
   query.set("access_token", accessToken);
-  query.set("fields", "id,effective_status");
+  query.set("fields", "id,name,objective,effective_status,daily_budget");
   query.set("limit", "200");
 
   let nextUrl = `https://graph.facebook.com/${apiVersion}/act_${adAccountId}/campaigns?${query.toString()}`;
@@ -452,49 +452,21 @@ async function fetchActiveCampaignIds(apiVersion, accessToken, adAccountId) {
     items.forEach((campaign) => {
       const id = String(campaign?.id || "").trim();
       const status = String(campaign?.effective_status || "").trim().toUpperCase();
-      if (id && status === "ACTIVE") ids.add(id);
+      if (!id || status !== "ACTIVE") return;
+      campaigns.set(id, {
+        id,
+        name: String(campaign?.name || "-").trim() || "-",
+        objective: String(campaign?.objective || "-").trim() || "-",
+        daily_budget: Number(campaign?.daily_budget || 0) > 0 ? Number(campaign.daily_budget) / 100 : 0,
+        effective_status: status
+      });
     });
 
     nextUrl = data?.paging?.next || null;
     pageCount += 1;
   }
 
-  return ids;
-}
-
-async function fetchCampaignBudgets(apiVersion, accessToken, adAccountId, campaignIds = new Set()) {
-  const budgets = new Map();
-  if (!campaignIds.size) return budgets;
-
-  const query = new URLSearchParams();
-  query.set("access_token", accessToken);
-  query.set("fields", "id,name,daily_budget");
-  query.set("limit", "200");
-
-  let nextUrl = `https://graph.facebook.com/${apiVersion}/act_${adAccountId}/campaigns?${query.toString()}`;
-
-  try {
-    while (nextUrl) {
-      const response = await fetch(nextUrl);
-      const data = await response.json();
-      if (!response.ok) break;
-
-      const items = Array.isArray(data?.data) ? data.data : [];
-      items.forEach((campaign) => {
-        const id = String(campaign?.id || "").trim();
-        const dailyBudget = Number(campaign?.daily_budget || 0);
-        if (id && campaignIds.has(id) && dailyBudget > 0) {
-          budgets.set(id, dailyBudget / 100); // Meta API retorna em centavos
-        }
-      });
-
-      nextUrl = data?.paging?.next || null;
-    }
-  } catch (error) {
-    // Se falhar, continua sem budgets
-  }
-
-  return budgets;
+  return campaigns;
 }
 
 module.exports = async function handler(request, response) {
@@ -556,19 +528,16 @@ module.exports = async function handler(request, response) {
 
   const accessToken = decryptText(tokenRow.encrypted_token);
 
-  let activeCampaignIds;
+  let activeCampaignCatalog;
   try {
-    activeCampaignIds = await fetchActiveCampaignIds(apiVersion, accessToken, adAccountId);
+    activeCampaignCatalog = await fetchActiveCampaignCatalog(apiVersion, accessToken, adAccountId);
   } catch (error) {
     return json(response, 502, { error: "Falha ao listar campanhas ativas da Meta.", detail: error.message });
   }
-
-  let campaignBudgets;
-  try {
-    campaignBudgets = await fetchCampaignBudgets(apiVersion, accessToken, adAccountId, activeCampaignIds);
-  } catch (error) {
-    campaignBudgets = new Map(); // Continua sem budgets se falhar
-  }
+  const activeCampaignIds = new Set(activeCampaignCatalog.keys());
+  const campaignBudgets = new Map(
+    Array.from(activeCampaignCatalog.values()).map((campaign) => [campaign.id, campaign.daily_budget || 0])
+  );
 
   const levelByType = { basico: "campaign", completo: "adset", detalhado: "ad" };
   const fieldsByType = {
@@ -649,6 +618,44 @@ module.exports = async function handler(request, response) {
       };
     });
 
+    const campaignsWithRows = new Set(
+      normalizedRows
+        .map((row) => String(row?.raw?.campaign_id || "").trim())
+        .filter(Boolean)
+    );
+
+    activeCampaignCatalog.forEach((campaign, campaignId) => {
+      if (campaignsWithRows.has(campaignId)) return;
+      normalizedRows.push({
+        raw: {
+          campaign_id: campaignId,
+          campaign_name: campaign.name,
+          objective: campaign.objective,
+          adset_id: "-",
+          adset_name: "-",
+          ad_id: "-",
+          ad_name: "-"
+        },
+        metrics: {
+          spend: 0,
+          clicks: 0,
+          impressions: 0,
+          reach: 0,
+          ctr: 0,
+          cpc: 0,
+          cpm: 0,
+          frequency: 0,
+          cpl: 0,
+          leads: 0
+        },
+        actionTotals: {},
+        actionValueTotals: {},
+        uniqueActionTotals: {},
+        primaryResult: { type: agencyMetricFocus, value: 0 },
+        advanced: buildAdvancedFromTotals({}, {}, {}, 0, 0, 0, 0, agencyMetricFocus)
+      });
+    });
+
     const summary = normalizedRows.reduce(
       (acc, row) => {
         acc.spend += row.metrics.spend;
@@ -711,7 +718,7 @@ module.exports = async function handler(request, response) {
         const media = adMediaMap[String(row.ad_id || "")] || {};
         return {
           campaign_id: row.campaign_id || "-",
-          campaign_name: row.campaign_name || "-",
+          campaign_name: row.campaign_name || activeCampaignCatalog.get(String(row.campaign_id || ""))?.name || "-",
           adset_id: row.adset_id || "-",
           adset_name: row.adset_name || "-",
           ad_id: row.ad_id || "-",
@@ -745,7 +752,7 @@ module.exports = async function handler(request, response) {
           focus_action_type: agencyMetricFocus,
           focus_results: focusRowResults,
           focus_cost: focusRowResults > 0 ? normalized.metrics.spend / focusRowResults : 0,
-          objective: row.objective || "-",
+          objective: row.objective || activeCampaignCatalog.get(String(row.campaign_id || ""))?.objective || "-",
           result_type: focusRowResults > 0 ? agencyMetricFocus : (primaryResult.type || "-"),
           results: focusRowResults > 0 ? focusRowResults : primaryResult.value,
           primary_result_type: primaryResult.type,
@@ -760,8 +767,7 @@ module.exports = async function handler(request, response) {
           video_watch_url: media.video_watch_url || null
         };
       })
-      .sort((a, b) => b.spend - a.spend)
-      .slice(0, 50);
+      .sort((a, b) => b.spend - a.spend || a.campaign_name.localeCompare(b.campaign_name, "pt-BR"));
 
     return json(response, 200, {
       ok: true,
@@ -785,9 +791,10 @@ module.exports = async function handler(request, response) {
         activeCampaignsOnly: true,
         activeCampaignCount: activeCampaignIds.size,
         activeCampaignIdsList: Array.from(activeCampaignIds),
+        activeCampaignsCatalog: Array.from(activeCampaignCatalog.values()),
         campaignDailyBudgets: Object.fromEntries(campaignBudgets),
         conversionBreakdown,
-        totalRows: rows.length
+        totalRows: topRows.length
       },
       summary,
       rows: topRows
