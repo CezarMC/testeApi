@@ -134,6 +134,8 @@ let campaignBreakdowns = [];
 let activeCampaignIdsList = [];
 let campaignDailyBudgets = {};
 let campaignActiveDaysWithSpend = {};
+let lastStageData = null;
+let lastCampaignSpendData = [];
 let availableAiProviders = [];
 let serverConfiguredAiProviders = [];
 let userConfiguredAiProviders = [];
@@ -1111,6 +1113,17 @@ function updateExecutiveBlocks(rows, summary, context = {}, dateStart, dateEnd) 
     stageAgg[stage.key].spend += Number(row.spend || 0);
     stageAgg[stage.key].results += Number(row.results || row.leads || 0);
   });
+
+  // Salva dados globais para uso no PDF
+  lastStageData = stageAgg;
+  lastCampaignSpendData = Object.values(
+    rows.reduce((acc, row) => {
+      const name = String(row.campaign_name || "Sem nome");
+      if (!acc[name]) acc[name] = { name, spend: 0 };
+      acc[name].spend += Number(row.spend || 0);
+      return acc;
+    }, {})
+  ).sort((a, b) => b.spend - a.spend).slice(0, 8);
 
   const totalSpend = Math.max(0.0001, totalSpendValue);
   stageBarsEl.innerHTML = Object.values(stageAgg)
@@ -2683,87 +2696,158 @@ function exportExecutivePdf() {
   const now = new Date().toLocaleString("pt-BR");
   const clientLabel = lastMetricsPayload.clientName || "Cliente";
   const periodLabel = `${lastMetricsPayload.dateStart || "-"} até ${lastMetricsPayload.dateEnd || "-"}`;
-  const indicadores = [
-    ["Gasto", kSpendEl.textContent],
-    ["Público atingido", kReachEl.textContent],
-    ["Impressões", kImpressionsEl.textContent],
-    ["Cliques", kClicksEl.textContent],
-    ["Leads", kLeadsEl.textContent],
-    ["CTR", kCtrEl.textContent],
-    ["CPC", kCpcEl.textContent],
-    ["CPM", document.getElementById("kCpm") ? document.getElementById("kCpm").textContent : "-"],
-    ["Frequência", kFrequencyEl.textContent],
-    ["Resultado principal", `${kResultsEl.textContent} (${kResultTypeEl.textContent})`],
-    ["Gasto médio por dia ativo", kDailySpendEl.textContent]
+
+  const kpis = [
+    { label: "Gasto total",            value: kSpendEl.textContent,                                                              cls: "blue"   },
+    { label: "Gasto / dia ativo",      value: kDailySpendEl.textContent,                                                         cls: "blue"   },
+    { label: "Resultado principal",    value: kResultsEl.textContent,                                                            cls: "green"  },
+    { label: "Custo por resultado",    value: document.getElementById("kFocusCost") ? document.getElementById("kFocusCost").textContent : "-", cls: "green"  },
+    { label: "Público atingido",       value: kReachEl.textContent,                                                              cls: "purple" },
+    { label: "Impressões",             value: kImpressionsEl.textContent,                                                        cls: "purple" },
+    { label: "CTR",                    value: kCtrEl.textContent,                                                                cls: "amber"  },
+    { label: "CPC",                    value: kCpcEl.textContent,                                                                cls: "amber"  },
+    { label: "CPM",                    value: document.getElementById("kCpm") ? document.getElementById("kCpm").textContent : "-", cls: "amber"  },
+    { label: "Cliques",                value: kClicksEl.textContent,                                                             cls: "teal"   },
+    { label: "Frequência",             value: kFrequencyEl.textContent,                                                          cls: "red"    },
+    { label: "Orçamento diário total", value: kConfiguredDailyBudgetEl ? kConfiguredDailyBudgetEl.textContent : "-",              cls: "blue"   }
   ];
 
-  const stageLines = Array.from(stageBarsEl.querySelectorAll("div > div:first-child"))
-    .map((el) => el.textContent.trim())
-    .filter(Boolean);
+  const stageData    = lastStageData ? Object.values(lastStageData) : [];
+  const stageLabels  = stageData.map((s) => s.label);
+  const stageSpend   = stageData.map((s) => Number(s.spend.toFixed(2)));
+  const stageResults = stageData.map((s) => s.results);
+
+  const campaignLabels = lastCampaignSpendData.map((c) => c.name.length > 35 ? c.name.slice(0, 33) + "\u2026" : c.name);
+  const campaignSpend  = lastCampaignSpendData.map((c) => Number(c.spend.toFixed(2)));
+
+  const historyItems  = [...metricsHistory].slice(0, 8).reverse();
+  const historyLabels = historyItems.map((h) => h.date.slice(0, 16));
+  const historySpend  = historyItems.map((h) => Number((h.activeDayMetrics?.spendPerActiveDay || 0).toFixed(2)));
+  const historyFocus  = historyItems.map((h) => Number((h.activeDayMetrics?.focusPerActiveDay || 0).toFixed(3)));
 
   const topAdsLines = Array.from(topAdsListEl.querySelectorAll("li"))
-    .map((el) => el.textContent.trim())
-    .filter(Boolean);
+    .map((el) => el.textContent.trim()).filter(Boolean);
+  const objective = objectiveSummaryEl ? objectiveSummaryEl.textContent : "";
+  const audit     = operationalAuditEl ? operationalAuditEl.textContent : "";
 
-  const win = window.open("", "_blank", "width=1100,height=800");
+  const safeJson = JSON.stringify({
+    client: clientLabel, period: periodLabel, now,
+    kpis, stageLabels, stageSpend, stageResults,
+    campaignLabels, campaignSpend,
+    historyLabels, historySpend, historyFocus,
+    objective, audit, topAdsLines
+  });
+
+  const win = window.open("", "_blank", "width=1200,height=900");
   if (!win) {
     setStatus("warn", "O navegador bloqueou a janela de exportação. Permita pop-ups para continuar.");
     return;
   }
 
   const html = `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <title>Relatório Executivo - ${escapeHtml(clientLabel)}</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 28px; color: #102a43; }
-    h1 { margin: 0 0 6px; font-size: 26px; }
-    .meta { color: #486581; margin-bottom: 18px; }
-    .section { margin-top: 20px; }
-    .box { border: 1px solid #d9e5ef; border-radius: 10px; padding: 12px; background: #f8fbff; }
-    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-    .item { border: 1px solid #d9e5ef; border-radius: 10px; padding: 10px; }
-    .k { font-size: 12px; color: #486581; text-transform: uppercase; }
-    .v { font-size: 20px; font-weight: 700; margin-top: 4px; }
-    ul, ol { margin: 8px 0 0 18px; }
-  </style>
-</head>
-<body>
-  <h1>Relatório Executivo de Campanhas</h1>
-  <div class="meta">Cliente: ${escapeHtml(clientLabel)} | Período: ${escapeHtml(periodLabel)} | Gerado em: ${escapeHtml(now)}</div>
-
+<html lang="pt-BR"><head>
+<meta charset="UTF-8"/>
+<title>Relatório Executivo - ${escapeHtml(clientLabel)}</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"><\/script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:Arial,Helvetica,sans-serif;background:#fff;color:#102a43;}
+.cover{background:linear-gradient(135deg,#051923 0%,#003554 55%,#0b78da 100%);color:#fff;padding:36px 40px 28px;display:flex;justify-content:space-between;align-items:flex-end;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.cover-title{font-size:26px;font-weight:700;letter-spacing:-0.5px;}
+.cover-sub{font-size:13px;opacity:.72;margin-top:5px;}
+.cover-badge{display:inline-block;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:4px 14px;font-size:11px;font-weight:600;margin-top:8px;}
+.cover-right{text-align:right;font-size:13px;}
+.cover-client{font-size:20px;font-weight:700;}
+.cover-period{margin-top:4px;opacity:.8;}
+.cover-ts{font-size:11px;opacity:.55;margin-top:3px;}
+.page{padding:28px 40px;}
+.section{margin-bottom:26px;}
+.section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.6px;color:#486581;border-bottom:2px solid #d9e5ef;padding-bottom:6px;margin-bottom:14px;}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.kpi-card{border-radius:10px;padding:12px 14px;border-left:4px solid #d9e5ef;background:#f8fbff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.kpi-label{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#486581;font-weight:700;}
+.kpi-value{font-size:20px;font-weight:700;margin-top:4px;color:#102a43;}
+.kpi-card.blue{border-left-color:#0b78da;background:#f0f7ff;}
+.kpi-card.green{border-left-color:#1f8f5f;background:#f0fbf6;}
+.kpi-card.purple{border-left-color:#7038c8;background:#f7f2ff;}
+.kpi-card.amber{border-left-color:#d98c10;background:#fffbf0;}
+.kpi-card.red{border-left-color:#b33030;background:#fff5f5;}
+.kpi-card.teal{border-left-color:#09827a;background:#f0fafa;}
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.chart-box{border:1px solid #d9e5ef;border-radius:12px;padding:16px;background:#fff;}
+.chart-box.full{grid-column:1/-1;}
+.cbt{font-size:11px;font-weight:700;color:#102a43;margin-bottom:12px;text-transform:uppercase;letter-spacing:.8px;}
+.cc{position:relative;height:200px;}
+.cc.tall{height:230px;}
+.text-box{border:1px solid #d9e5ef;border-radius:10px;padding:14px 16px;background:#f8fbff;font-size:12px;line-height:1.65;white-space:pre-line;color:#253d52;}
+.ads-table{width:100%;border-collapse:collapse;font-size:12px;}
+.ads-table th{text-align:left;padding:6px 10px;background:#f0f5fa;color:#486581;font-size:10px;text-transform:uppercase;}
+.ads-table td{padding:7px 10px;border-bottom:1px solid #edf2f7;}
+.ads-table tr:last-child td{border-bottom:none;}
+.footer{text-align:center;font-size:10px;color:#aab8c6;padding:16px 40px;border-top:1px solid #edf2f7;}
+.pbtn{position:fixed;top:14px;right:16px;background:#0b78da;color:#fff;border:none;border-radius:8px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(11,120,218,.4);z-index:100;}
+.pbtn:hover{background:#0862b8;}
+@media print{
+  body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .pbtn{display:none!important;}
+  .cover,.kpi-card{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .section,.chart-row{page-break-inside:avoid;}
+}
+</style>
+</head><body>
+<button class="pbtn" onclick="window.print()">Salvar / Imprimir PDF</button>
+<div class="cover">
+  <div>
+    <div class="cover-title">Relatório Executivo de Campanhas</div>
+    <div class="cover-sub">Meta Business · Campanhas patrocinadas</div>
+    <div class="cover-badge">AOPA — Painel Meta Business</div>
+  </div>
+  <div class="cover-right">
+    <div class="cover-client" id="cvclient"></div>
+    <div class="cover-period" id="cvperiod"></div>
+    <div class="cover-ts" id="cvts"></div>
+  </div>
+</div>
+<div class="page">
+  <div class="section"><div class="section-title">Indicadores Principais</div><div class="kpi-grid" id="kgrid"></div></div>
   <div class="section">
-    <h2>Indicadores principais</h2>
-    <div class="grid">
-      ${indicadores.map(([k, v]) => `<div class="item"><div class="k">${escapeHtml(k)}</div><div class="v">${escapeHtml(v)}</div></div>`).join("")}
+    <div class="section-title">Análise Visual das Campanhas</div>
+    <div class="chart-row">
+      <div class="chart-box"><div class="cbt">Distribuição por etapa do funil</div><div class="cc"><canvas id="cFunnel"></canvas></div></div>
+      <div class="chart-box"><div class="cbt">Gasto por campanha</div><div class="cc"><canvas id="cCamp"></canvas></div></div>
     </div>
   </div>
-
-  <div class="section">
-    <h2>Objetivo estratégico</h2>
-    <div class="box">${escapeHtml(objectiveSummaryEl.textContent)}</div>
+  <div class="section" id="sHist">
+    <div class="section-title">Histórico de Performance (sessão atual)</div>
+    <div class="chart-box full"><div class="cbt">Evolução: Gasto/dia ativo · Resultados/dia ativo</div><div class="cc tall"><canvas id="cHist"></canvas></div></div>
   </div>
-
-  <div class="section">
-    <h2>Distribuição por etapa</h2>
-    <div class="box">
-      <ul>${stageLines.map((line) => `<li>${escapeHtml(line)}</li>`).join("") || "<li>Sem dados.</li>"}</ul>
-    </div>
-  </div>
-
-  <div class="section">
-    <h2>Top anúncios por resultado</h2>
-    <div class="box">
-      <ol>${topAdsLines.map((line) => `<li>${escapeHtml(line)}</li>`).join("") || "<li>Sem dados.</li>"}</ol>
-    </div>
-  </div>
-
-  <script>
-    window.onload = () => { window.print(); };
-  </script>
-</body>
-</html>`;
+  <div class="section"><div class="section-title">Objetivo Estratégico das Campanhas</div><div class="text-box" id="tObj"></div></div>
+  <div class="section"><div class="section-title">Auditoria Operacional</div><div class="text-box" id="tAudit"></div></div>
+  <div class="section"><div class="section-title">Top Anúncios por Resultado</div><div id="tAds"></div></div>
+</div>
+<div class="footer">Relatório gerado automaticamente via AOPA Painel Meta Business &nbsp;·&nbsp; ${escapeHtml(now)}</div>
+<script>
+const D=${safeJson};
+document.getElementById("cvclient").textContent=D.client;
+document.getElementById("cvperiod").textContent=D.period;
+document.getElementById("cvts").textContent="Gerado em: "+D.now;
+document.getElementById("tObj").textContent=D.objective;
+document.getElementById("tAudit").textContent=D.audit;
+const grid=document.getElementById("kgrid");
+D.kpis.forEach(function(k){
+  var d=document.createElement("div");
+  d.className="kpi-card "+k.cls;
+  d.innerHTML='<div class="kpi-label">'+k.label+'</div><div class="kpi-value">'+k.value+'</div>';
+  grid.appendChild(d);
+});
+var COLORS=["#0b78da","#1f8f5f","#d98c10","#7038c8","#b33030","#09827a","#f0843a","#5c6ac4"];
+new Chart(document.getElementById("cFunnel"),{type:"bar",data:{labels:D.stageLabels,datasets:[{label:"Gasto (R$)",data:D.stageSpend,backgroundColor:["#0b78da","#1f8f5f","#d98c10"],borderRadius:6},{label:"Resultados",data:D.stageResults,backgroundColor:["rgba(11,120,218,.22)","rgba(31,143,95,.22)","rgba(217,140,16,.22)"],borderRadius:6}]},options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{font:{size:10}}}},scales:{x:{grid:{color:"#f0f5fa"},ticks:{font:{size:10}}},y:{ticks:{font:{size:10}}}}}});
+if(D.campaignLabels.length>0){new Chart(document.getElementById("cCamp"),{type:"doughnut",data:{labels:D.campaignLabels,datasets:[{data:D.campaignSpend,backgroundColor:COLORS,hoverOffset:6,borderWidth:2,borderColor:"#fff"}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{font:{size:10},padding:8,boxWidth:12}}}}});}
+if(D.historyLabels.length>1){new Chart(document.getElementById("cHist"),{type:"line",data:{labels:D.historyLabels,datasets:[{label:"Gasto/dia ativo (R$)",data:D.historySpend,borderColor:"#0b78da",backgroundColor:"rgba(11,120,218,.08)",fill:true,tension:.38,pointRadius:5,pointBackgroundColor:"#0b78da"},{label:"Resultados/dia ativo",data:D.historyFocus,borderColor:"#1f8f5f",backgroundColor:"rgba(31,143,95,.05)",fill:false,tension:.38,pointRadius:5,pointBackgroundColor:"#1f8f5f",yAxisID:"y2"}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{font:{size:10}}}},scales:{x:{grid:{color:"#f0f5fa"},ticks:{font:{size:9},maxRotation:30}},y:{grid:{color:"#f0f5fa"},ticks:{font:{size:9}},position:"left"},y2:{ticks:{font:{size:9}},position:"right",grid:{drawOnChartArea:false}}}}});}else{var hEl=document.getElementById("sHist");if(hEl)hEl.style.display="none";}
+var c=document.getElementById("tAds");
+if(D.topAdsLines.length>0){var t=document.createElement("table");t.className="ads-table";t.innerHTML='<thead><tr><th>#</th><th>Anúncio</th></tr></thead>';var b=document.createElement("tbody");D.topAdsLines.forEach(function(l,i){var r=document.createElement("tr");r.innerHTML='<td style="width:30px;color:#486581;font-weight:700;">'+(i+1)+'<\/td><td>'+l+'<\/td>';b.appendChild(r);});t.appendChild(b);c.appendChild(t);}else{c.innerHTML='<div style="color:#6b7f94;font-size:12px;">Sem dados de anúncios. Use o tipo Detalhado para ranking.<\/div>';}
+setTimeout(function(){window.print();},1500);
+<\/script></body></html>`;
 
   win.document.open();
   win.document.write(html);
