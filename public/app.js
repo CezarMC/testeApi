@@ -1032,11 +1032,11 @@ function updateExecutiveBlocks(rows, summary, context = {}, dateStart, dateEnd) 
   kResultTypeEl.textContent = `${exec.healthTier} (${exec.healthScore}/100)`;
   kDailySpendEl.textContent = brMoney(exec.dailySpend);
 
-  // Calcula orçamento diário médio a partir das campanhas ativas
+  // Calcula orçamento diário total configurado das campanhas ativas
   const budgets = Object.values(campaignDailyBudgets || {});
-  const avgConfiguredBudget = budgets.length > 0 ? budgets.reduce((a, b) => a + b, 0) / budgets.length : 0;
+  const totalConfiguredBudget = budgets.length > 0 ? budgets.reduce((a, b) => a + b, 0) : 0;
   if (kConfiguredDailyBudgetEl) {
-    kConfiguredDailyBudgetEl.textContent = brMoney(avgConfiguredBudget);
+    kConfiguredDailyBudgetEl.textContent = brMoney(totalConfiguredBudget);
   }
 
   const ctr = Number((summary?.kpis?.ctr ?? summary?.ctr) || 0);
