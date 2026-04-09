@@ -462,6 +462,41 @@ async function fetchActiveCampaignIds(apiVersion, accessToken, adAccountId) {
   return ids;
 }
 
+async function fetchCampaignBudgets(apiVersion, accessToken, adAccountId, campaignIds = new Set()) {
+  const budgets = new Map();
+  if (!campaignIds.size) return budgets;
+
+  const query = new URLSearchParams();
+  query.set("access_token", accessToken);
+  query.set("fields", "id,name,daily_budget");
+  query.set("limit", "200");
+
+  let nextUrl = `https://graph.facebook.com/${apiVersion}/act_${adAccountId}/campaigns?${query.toString()}`;
+
+  try {
+    while (nextUrl) {
+      const response = await fetch(nextUrl);
+      const data = await response.json();
+      if (!response.ok) break;
+
+      const items = Array.isArray(data?.data) ? data.data : [];
+      items.forEach((campaign) => {
+        const id = String(campaign?.id || "").trim();
+        const dailyBudget = Number(campaign?.daily_budget || 0);
+        if (id && campaignIds.has(id) && dailyBudget > 0) {
+          budgets.set(id, dailyBudget / 100); // Meta API retorna em centavos
+        }
+      });
+
+      nextUrl = data?.paging?.next || null;
+    }
+  } catch (error) {
+    // Se falhar, continua sem budgets
+  }
+
+  return budgets;
+}
+
 module.exports = async function handler(request, response) {
   if (request.method !== "POST") {
     return json(response, 405, { error: "Use POST." });
@@ -526,6 +561,13 @@ module.exports = async function handler(request, response) {
     activeCampaignIds = await fetchActiveCampaignIds(apiVersion, accessToken, adAccountId);
   } catch (error) {
     return json(response, 502, { error: "Falha ao listar campanhas ativas da Meta.", detail: error.message });
+  }
+
+  let campaignBudgets;
+  try {
+    campaignBudgets = await fetchCampaignBudgets(apiVersion, accessToken, adAccountId, activeCampaignIds);
+  } catch (error) {
+    campaignBudgets = new Map(); // Continua sem budgets se falhar
   }
 
   const levelByType = { basico: "campaign", completo: "adset", detalhado: "ad" };
@@ -743,6 +785,7 @@ module.exports = async function handler(request, response) {
         activeCampaignsOnly: true,
         activeCampaignCount: activeCampaignIds.size,
         activeCampaignIdsList: Array.from(activeCampaignIds),
+        campaignDailyBudgets: Object.fromEntries(campaignBudgets),
         conversionBreakdown,
         totalRows: rows.length
       },

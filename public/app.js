@@ -132,6 +132,7 @@ let lastMetricsPayload = null;
 let metricsHistory = [];
 let campaignBreakdowns = [];
 let activeCampaignIdsList = [];
+let campaignDailyBudgets = {};
 let availableAiProviders = [];
 let serverConfiguredAiProviders = [];
 let userConfiguredAiProviders = [];
@@ -250,6 +251,7 @@ const kFrequencyEl = document.getElementById("kFrequency");
 const kResultsEl = document.getElementById("kResults");
 const kResultTypeEl = document.getElementById("kResultType");
 const kDailySpendEl = document.getElementById("kDailySpend");
+const kConfiguredDailyBudgetEl = document.getElementById("kConfiguredDailyBudget");
 const objectiveSummaryEl = document.getElementById("objectiveSummary");
 const stageBarsEl = document.getElementById("stageBars");
 const topAdsListEl = document.getElementById("topAdsList");
@@ -1021,6 +1023,13 @@ function updateExecutiveBlocks(rows, summary, context = {}, dateStart, dateEnd) 
   kResultsEl.textContent = brInt(exec.totalResults);
   kResultTypeEl.textContent = `${exec.healthTier} (${exec.healthScore}/100)`;
   kDailySpendEl.textContent = brMoney(exec.dailySpend);
+
+  // Calcula orçamento diário médio a partir das campanhas ativas
+  const budgets = Object.values(campaignDailyBudgets || {});
+  const avgConfiguredBudget = budgets.length > 0 ? budgets.reduce((a, b) => a + b, 0) / budgets.length : 0;
+  if (kConfiguredDailyBudgetEl) {
+    kConfiguredDailyBudgetEl.textContent = brMoney(avgConfiguredBudget);
+  }
 
   const ctr = Number((summary?.kpis?.ctr ?? summary?.ctr) || 0);
   const linkCtr = Number((summary?.kpis?.link_ctr ?? summary?.advanced?.link_ctr) || 0);
@@ -2498,6 +2507,7 @@ async function loadMetrics() {
   updateTable(result.data.rows || []);
   updateExecutiveBlocks(result.data.rows || [], result.data.summary || {}, result.data.context || {}, dateStart, dateEnd);
   activeCampaignIdsList = (result.data.context || {}).activeCampaignIdsList || [];
+  campaignDailyBudgets = (result.data.context || {}).campaignDailyBudgets || {};
   syncCampaignDetail(result.data.rows || []);
 
   // Diagnóstico de conversões: mostra breakdown de action_types reais recebidos da Meta API
