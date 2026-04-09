@@ -1044,7 +1044,16 @@ function updateExecutiveBlocks(rows, summary, context = {}, dateStart, dateEnd) 
   const linkCtr = Number((summary?.kpis?.link_ctr ?? summary?.advanced?.link_ctr) || 0);
   const focusCost = Number((summary?.kpis?.focus_cost ?? summary?.focus_cost) || 0);
   const totalSpendValue = Number(summary?.spend || 0);
-  const objectiveText = `Período analisado: ${periodDays} dia(s) | Base do gasto médio: ${exec.effectiveDays} campanha-dia com gasto | Gasto total: ${brMoney(totalSpendValue)} | Gasto médio por dia ativo: ${brMoney(exec.dailySpend)} | Foco em ${exec.focusLabel} com ${brInt(exec.totalResults)} resultado(s). Custo por resultado: ${brMoney(focusCost)}. Qualidade: CTR ${toPercent(ctr)} | CTR link ${toPercent(linkCtr)} | Saúde ${exec.healthScore}/100 (${exec.healthTier}). Público atingido: ${brInt(exec.reach)} e ${brInt(exec.impressions)} impressões.`;
+  const objectiveText = [
+    `Período analisado: ${periodDays} dia(s)`,
+    `Base do gasto médio: ${brInt(exec.effectiveDays)} campanha-dia com gasto`,
+    `Gasto total: ${brMoney(totalSpendValue)}`,
+    `Gasto médio por dia ativo: ${brMoney(exec.dailySpend)}`,
+    `Foco em ${exec.focusLabel} com ${brInt(exec.totalResults)} resultado(s)`,
+    `Custo por resultado: ${brMoney(focusCost)}`,
+    `Qualidade: CTR ${toPercent(ctr)} | CTR link ${toPercent(linkCtr)} | Saúde ${exec.healthScore}/100 (${exec.healthTier})`,
+    `Público atingido: ${brInt(exec.reach)} e ${brInt(exec.impressions)} impressões`
+  ].join("\n");
   objectiveSummaryEl.textContent = objectiveText;
 
   if (operationalAuditEl) {
@@ -1058,9 +1067,15 @@ function updateExecutiveBlocks(rows, summary, context = {}, dateStart, dateEnd) 
     const campaignsWithoutSpend = Math.max(0, activeCampaignCount - campaignsWithSpend);
     const budgetUsagePct = totalConfiguredBudget > 0 ? (exec.dailySpend / totalConfiguredBudget) * 100 : 0;
     const budgetStatus = totalConfiguredBudget > 0
-      ? `Uso médio do orçamento diário: ${budgetUsagePct.toFixed(1).replace(".", ",")}%`
+      ? `Orçamento diário total configurado: ${brMoney(totalConfiguredBudget)} | Uso médio do orçamento: ${budgetUsagePct.toFixed(1).replace(".", ",")}%`
       : "Orçamento diário não retornado pela Meta para as campanhas ativas.";
-    operationalAuditEl.textContent = `Campanhas ativas: ${brInt(activeCampaignCount)} | Campanhas com gasto no período: ${brInt(campaignsWithSpend)} | Campanhas ativas sem gasto: ${brInt(campaignsWithoutSpend)} | Base do cálculo: ${brInt(exec.effectiveDays)} campanha-dia com gasto | ${budgetStatus}`;
+    operationalAuditEl.textContent = [
+      `Campanhas ativas: ${brInt(activeCampaignCount)}`,
+      `Campanhas com gasto no período: ${brInt(campaignsWithSpend)}`,
+      `Campanhas ativas sem gasto: ${brInt(campaignsWithoutSpend)}`,
+      `Base do cálculo: ${brInt(exec.effectiveDays)} campanha-dia com gasto`,
+      budgetStatus
+    ].join("\n");
   }
 
   const stageAgg = {
