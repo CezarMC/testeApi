@@ -131,6 +131,7 @@ let selectedPeriodDays = 1;
 let lastMetricsPayload = null;
 let metricsHistory = [];
 let campaignBreakdowns = [];
+let activeCampaignIdsList = [];
 let availableAiProviders = [];
 let serverConfiguredAiProviders = [];
 let userConfiguredAiProviders = [];
@@ -934,12 +935,15 @@ function syncCampaignDetail(rows = []) {
   campaignBreakdowns = buildCampaignBreakdowns(rows);
   campaignDetailSelectEl.innerHTML = "<option value=''>Selecione uma campanha...</option>";
 
-  campaignBreakdowns.forEach((campaign) => {
-    const option = document.createElement("option");
-    option.value = campaign.key;
-    option.textContent = `${campaign.name} | ${normalizeObjective(campaign.objective)} | ${brMoney(campaign.spend)} | ${brInt(campaign.results)} resultado(s)`;
-    campaignDetailSelectEl.appendChild(option);
-  });
+  const activeCampaignSet = new Set(activeCampaignIdsList);
+  campaignBreakdowns
+    .filter((campaign) => !activeCampaignIdsList.length || activeCampaignSet.has(campaign.id))
+    .forEach((campaign) => {
+      const option = document.createElement("option");
+      option.value = campaign.key;
+      option.textContent = `${campaign.name} | ${normalizeObjective(campaign.objective)} | ${brMoney(campaign.spend)} | ${brInt(campaign.results)} resultado(s)`;
+      campaignDetailSelectEl.appendChild(option);
+    });
 
   if (campaignBreakdowns.length === 0) {
     renderCampaignDetailChart(null);
@@ -2492,6 +2496,7 @@ async function loadMetrics() {
   updateCards(result.data.summary || {});
   updateTable(result.data.rows || []);
   updateExecutiveBlocks(result.data.rows || [], result.data.summary || {}, result.data.context || {}, dateStart, dateEnd);
+  activeCampaignIdsList = (result.data.context || {}).activeCampaignIdsList || [];
   syncCampaignDetail(result.data.rows || []);
 
   // Diagnóstico de conversões: mostra breakdown de action_types reais recebidos da Meta API

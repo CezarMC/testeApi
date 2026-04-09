@@ -742,6 +742,7 @@ module.exports = async function handler(request, response) {
         },
         activeCampaignsOnly: true,
         activeCampaignCount: activeCampaignIds.size,
+        activeCampaignIdsList: Array.from(activeCampaignIds),
         conversionBreakdown,
         totalRows: rows.length
       },
